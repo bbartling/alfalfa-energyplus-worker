@@ -49,7 +49,10 @@ def test_root_endpoint() -> None:
     client = TestClient(app)
     resp = client.get("/")
     assert resp.status_code == 200
-    assert resp.json()["healthz"] == "/healthz"
+    assert "text/html" in resp.headers["content-type"]
+    assert "<canvas" in resp.text
+    assert "PONG" in resp.text
+    assert "Press R to restart" in resp.text
 
 
 def test_jobs_require_api_key(monkeypatch) -> None:

@@ -219,16 +219,12 @@ async def _execute(job_id: str, expand_objects: bool) -> None:
         _write_metadata(job_id, metadata)
 
 
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+
 @app.get("/")
-def root() -> dict:
-    return {
-        "service": "vibe23-energyplus-worker",
-        "version": APP_VERSION,
-        "healthz": "/healthz",
-        "docs": "/docs",
-        "jobs": "POST /v1/jobs (Bearer API_KEY required)",
-        "list_jobs": "GET /v1/jobs (Bearer API_KEY required)",
-    }
+def root() -> FileResponse:
+    return FileResponse(STATIC_DIR / "pong.html", media_type="text/html")
 
 
 @app.get("/healthz")

@@ -1,5 +1,7 @@
 # Vibe 23 EnergyPlus Worker
 
+> **Demo:** `/` currently serves a playable Pong game so a new Render deploy can be shown in the browser. Move the left paddle with the mouse, touch, or arrow keys, and press **R** to restart. The EnergyPlus worker API is unchanged (`/healthz`, `/docs`, `/v1/jobs`).
+
 Authenticated FastAPI worker that runs **EnergyPlus 26.1** simulations in Docker. It backs the [Vibe 23 Residential DSM Studio](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) (Streamlit) with a **queued, one-at-a-time** job runner (`MAX_CONCURRENT_JOBS`, default 1).
 
 | | |
