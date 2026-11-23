@@ -68,7 +68,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="Vibe 23 EnergyPlus Worker",
+    title="EnergyPlus Batch Worker",
     version=APP_VERSION,
     description="Runs isolated EnergyPlus 26.1 simulations and returns their output archives.",
     lifespan=lifespan,
@@ -219,12 +219,16 @@ async def _execute(job_id: str, expand_objects: bool) -> None:
         _write_metadata(job_id, metadata)
 
 
-STATIC_DIR = Path(__file__).resolve().parent / "static"
-
-
 @app.get("/")
-def root() -> FileResponse:
-    return FileResponse(STATIC_DIR / "pong.html", media_type="text/html")
+def root() -> dict:
+    return {
+        "service": "EnergyPlus Batch Worker",
+        "description": "EnergyPlus batch-job API, not an Alfalfa server",
+        "documentation": "/docs",
+        "health": "/healthz",
+        "jobs": "/v1/jobs",
+        "alfalfa_client_integration": "scripts/alfalfa_smoke.py",
+    }
 
 
 @app.get("/healthz")

@@ -1,6 +1,6 @@
-# Vibe 23 EnergyPlus Worker
+# EnergyPlus Batch Worker + Alfalfa Client Test Harness
 
-> **Demo:** `/` currently serves a playable Pong game so a new Render deploy can be shown in the browser. Move the left paddle with the mouse, touch, or arrow keys, and press **R** to restart. The EnergyPlus worker API is unchanged (`/healthz`, `/docs`, `/v1/jobs`).
+This repository hosts an EnergyPlus **batch simulation API** on Render. Pong has been removed. An optional, separately executed integration smoke test uses `alfalfa-client==1.0.0` against a **real, independently hosted Alfalfa server**. This batch worker does **not** implement the Alfalfa API or interactive controls by itself.
 
 Authenticated FastAPI worker that runs **EnergyPlus 26.1** simulations in Docker. It backs the [Vibe 23 Residential DSM Studio](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) (Streamlit) with a **queued, one-at-a-time** job runner (`MAX_CONCURRENT_JOBS`, default 1).
 
@@ -9,7 +9,7 @@ Authenticated FastAPI worker that runs **EnergyPlus 26.1** simulations in Docker
 | **Live service** | [https://vibe23-energyplus-worker.onrender.com/](https://vibe23-energyplus-worker.onrender.com/) |
 | **OpenAPI / Swagger** | [https://vibe23-energyplus-worker.onrender.com/docs](https://vibe23-energyplus-worker.onrender.com/docs) |
 | **Health** | [https://vibe23-energyplus-worker.onrender.com/healthz](https://vibe23-energyplus-worker.onrender.com/healthz) |
-| **Source** | [github.com/bbartling/vibe23-energyplus-worker](https://github.com/bbartling/vibe23-energyplus-worker) |
+| **Source** | [github.com/bbartling/alfalfa-energyplus-worker](https://github.com/bbartling/alfalfa-energyplus-worker) |
 | **Frontend (Vibe 23)** | [`vibe_code_apps_23`](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) in [py-bacnet-stacks-playground](https://github.com/bbartling/py-bacnet-stacks-playground) |
 
 The image downloads the official EnergyPlus 26.1 Ubuntu 24.04 x86-64 release, verifies its published SHA-256 checksum, and runs each job in a separate directory. Job artifacts expire after 24 hours by default.
@@ -18,7 +18,7 @@ The image downloads the official EnergyPlus 26.1 Ubuntu 24.04 x86-64 release, ve
 
 ## Deploy on Render
 
-1. Push this repository to GitHub (`develop` or `main`).
+1. Use the `develop` branch (this repository’s default branch).
 2. In Render: **New → Blueprint** and select the repo so [`render.yaml`](render.yaml) applies.
 3. Confirm Environment includes `API_KEY` (Blueprint may use `generateValue: true`).
 4. If `/healthz` shows `"api_key_configured": false`, set `API_KEY` manually:
@@ -103,7 +103,7 @@ Python-only checks (no EnergyPlus binary build):
 ```bash
 python -m venv .venv
 . .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt pytest ruff
+pip install -r requirements.txt -r requirements-alfalfa.txt pytest ruff
 pytest -q
 ruff check app tests
 ```
@@ -123,6 +123,26 @@ ruff check app tests
 This service runs **one prepared IDF + one EPW** per job. The Studio client in [`vibe_code_apps_23`](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) prepares candidate IDFs, submits/polls jobs, and builds `ranking.json` / `twin_export.json`.
 
 For large catalogs (up to 169 cells), keep concurrency low and watch free-tier sleep + CPU limits.
+
+## Alfalfa client integration test
+
+The actual Alfalfa server is a multi-service stack (web/API, simulation workers, MongoDB, Redis, MinIO). Its client cannot control this batch worker. To test interactive HVAC/grid-flex controls, first run the upstream Alfalfa stack separately (e.g. its documented Docker Compose deployment). Then install the optional pinned integration dependencies:
+
+```bash
+pip install -r requirements-alfalfa.txt
+```
+
+Set `ALFALFA_URL` to the running Alfalfa server (and optionally `ALFALFA_RUN_ID` to a running test run), then execute:
+
+```bash
+python scripts/alfalfa_smoke.py
+# optional: live test of writable points and advancement on a disposable external-clock run
+ALFALFA_RUN_ID=<your-test-run-id> ALFALFA_CONTROL_INPUT=<point-name> ALFALFA_CONTROL_VALUE=22 python scripts/alfalfa_smoke.py --control
+```
+
+The default smoke test verifies the real package import and client construction without contacting an external server; pass `--live` to verify a configured server (read-only). The `--control` test writes to a supplied point and advances the model **once**, so only use it against a disposable test run. `pytest -q` exercises the import and configuration of `alfalfa-client`; the live test needs an accessible Alfalfa server and is not run by ordinary CI.
+
+**Render:** The existing single Docker web service deploys the batch worker and its FastAPI docs. It does not launch the full Alfalfa stack, and job data is ephemeral across restarts unless backed by durable storage. For interactive Alfalfa, deploy the upstream multi-container infrastructure separately (or configure several appropriate paid services with persistent databases/object storage). See [upstream deployment](https://github.com/NatLabRockies/alfalfa) and [Render disk documentation](https://render.com/docs/disks).
 
 ## License and provenance
 

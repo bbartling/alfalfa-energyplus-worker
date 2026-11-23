@@ -49,10 +49,9 @@ def test_root_endpoint() -> None:
     client = TestClient(app)
     resp = client.get("/")
     assert resp.status_code == 200
-    assert "text/html" in resp.headers["content-type"]
-    assert "<canvas" in resp.text
-    assert "PONG" in resp.text
-    assert "Press R to restart" in resp.text
+    assert resp.json()["service"] == "EnergyPlus Batch Worker"
+    assert resp.json()["documentation"] == "/docs"
+    assert resp.json()["jobs"] == "/v1/jobs"
 
 
 def test_jobs_require_api_key(monkeypatch) -> None:
