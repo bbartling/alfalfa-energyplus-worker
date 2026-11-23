@@ -10,3 +10,4 @@ __pycache__/
 .DS_Store
 results/
 jobs/
+upstream/_alfalfa_upstream/
