@@ -1,6 +1,6 @@
 """Exercise the OFFICIAL Alfalfa REST API via the upstream pacer-client.
 
-Requires a real Alfalfa server, not the legacy Render EnergyPlus batch worker.
+Requires the locally running official Alfalfa Docker Compose stack.
 The supplied model must be an upstream-compatible model folder or file.
 """
 from __future__ import annotations
