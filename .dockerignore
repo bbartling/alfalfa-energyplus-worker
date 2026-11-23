@@ -1,8 +1,0 @@
-.git
-.github
-tests
-jobs
-.venv
-__pycache__
-*.pyc
-

@@ -1,149 +1,44 @@
-# EnergyPlus Batch Worker + Alfalfa Client Test Harness
+# Alfalfa deployment and controls experiments
 
-This repository hosts an EnergyPlus **batch simulation API** on Render. Pong has been removed. An optional, separately executed integration smoke test uses `alfalfa-client==1.0.0` against a **real, independently hosted Alfalfa server**. This batch worker does **not** implement the Alfalfa API or interactive controls by itself.
+This repository is a **thin deployment and experimentation wrapper** for the official laboratory-maintained [Alfalfa virtual building service](https://github.com/NatLabRockies/alfalfa). It does **not** implement a custom EnergyPlus or Alfalfa API.
 
-Authenticated FastAPI worker that runs **EnergyPlus 26.1** simulations in Docker. It backs the [Vibe 23 Residential DSM Studio](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) (Streamlit) with a **queued, one-at-a-time** job runner (`MAX_CONCURRENT_JOBS`, default 1).
+- Official server: https://github.com/NatLabRockies/alfalfa
+- Official Python client (renamed): https://github.com/NatLabRockies/alfalfa-client
+- Official examples: https://github.com/NatLabRockies/alfalfa-notebooks
 
-| | |
-|---|---|
-| **Live service** | [https://vibe23-energyplus-worker.onrender.com/](https://vibe23-energyplus-worker.onrender.com/) |
-| **OpenAPI / Swagger** | [https://vibe23-energyplus-worker.onrender.com/docs](https://vibe23-energyplus-worker.onrender.com/docs) |
-| **Health** | [https://vibe23-energyplus-worker.onrender.com/healthz](https://vibe23-energyplus-worker.onrender.com/healthz) |
-| **Source** | [github.com/bbartling/alfalfa-energyplus-worker](https://github.com/bbartling/alfalfa-energyplus-worker) |
-| **Frontend (Vibe 23)** | [`vibe_code_apps_23`](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) in [py-bacnet-stacks-playground](https://github.com/bbartling/py-bacnet-stacks-playground) |
+## Local (recommended first)
 
-The image downloads the official EnergyPlus 26.1 Ubuntu 24.04 x86-64 release, verifies its published SHA-256 checksum, and runs each job in a separate directory. Job artifacts expire after 24 hours by default.
-
-> **Free-tier note:** The public deploy uses Render’s free web service tier. Idle instances **sleep** and need a wake (first `/healthz` or Studio **Wake worker**, typically 30–90s). Prefer a paid always-on instance for long campaigns (e.g. full 169-cell searches).
-
-## Deploy on Render
-
-1. Use the `develop` branch (this repository’s default branch).
-2. In Render: **New → Blueprint** and select the repo so [`render.yaml`](render.yaml) applies.
-3. Confirm Environment includes `API_KEY` (Blueprint may use `generateValue: true`).
-4. If `/healthz` shows `"api_key_configured": false`, set `API_KEY` manually:
-
-**Dashboard** — Render → `vibe23-energyplus-worker` → **Environment** → `API_KEY` = a long random secret → Save → Manual Deploy.
-
-**Script** (needs a Render *account* API key `rnd_…`, not the worker bearer key):
+Install Docker Desktop and Git. In PowerShell:
 
 ```powershell
-$env:RENDER_API_KEY = "rnd_..."
-.\scripts\configure_render.ps1
+.\start-local.ps1
 ```
 
-Writes gitignored `.env.render.local` for local Streamlit.
+The script clones the official source at a pinned commit and starts its Docker Compose stack, including web, worker, MongoDB, Redis and MinIO. API docs: http://localhost/docs. The first build can be large and slow.
 
-5. Point Studio / Streamlit Community Cloud secrets at the live service:
+In another terminal:
 
-```toml
-EPLUS_BACKEND = "worker"
-EPLUS_WORKER_URL = "https://vibe23-energyplus-worker.onrender.com"
-EPLUS_WORKER_API_KEY = "same-as-render-service-API_KEY"
+```powershell
+python -m pip install pacer-client
+python .\pacer_experiment.py --host http://localhost --check
 ```
 
-Verify:
+For a real model, follow the official notebooks to prepare an Alfalfa-compatible model folder and run:
 
-```bash
-curl https://vibe23-energyplus-worker.onrender.com/healthz
-# expect ok=true and api_key_configured=true
+```powershell
+python .\pacer_experiment.py --host http://localhost --model .\path\to\model --steps 3
 ```
 
-## API
+Optional controls: `--input-name "EXPOSED_POINT_NAME" --input-value 22`. The client prints available point names. Do not assume an IDF automatically exposes writable points.
 
-Interactive docs: [https://vibe23-energyplus-worker.onrender.com/docs](https://vibe23-energyplus-worker.onrender.com/docs)
+## Render
 
-Health (no auth):
+`Dockerfile` now uses the **official Alfalfa web image**; the previous FastAPI batch service has been deleted. `render.yaml` describes only the public-facing web service. **It is not a complete production Alfalfa deployment.** It requires a separately deployed Alfalfa worker, Redis, MongoDB and S3-compatible object storage, plus correct Render environment variables and network routing. Until those dependencies are configured, a Render build or startup may fail. Auto-deploy on GitHub push does **not** imply the official Alfalfa API is healthy.
 
-```bash
-curl https://vibe23-energyplus-worker.onrender.com/healthz
-```
+Do not deploy with the upstream example passwords or expose development MinIO/MongoDB/Redis publicly. Secure credentials and persistent storage are required before public deployment. The web and worker image tags must be tested together and ideally pinned to immutable image digests for production.
 
-Submit a simulation:
+The legacy endpoints `/healthz`, `/v1/jobs`, and the Pong prototype are intentionally removed. The official Alfalfa API uses `/api/v2/`. No V1/V2 compatibility shim is maintained in this repository.
 
-```bash
-curl -X POST https://vibe23-energyplus-worker.onrender.com/v1/jobs \
-  -H "Authorization: Bearer $EPLUS_WORKER_API_KEY" \
-  -F "idf=@model.idf" \
-  -F "epw=@weather.epw" \
-  -F "expand_objects=true"
-```
+## Upstream provenance
 
-Poll and download:
-
-```bash
-curl -H "Authorization: Bearer $EPLUS_WORKER_API_KEY" \
-  https://vibe23-energyplus-worker.onrender.com/v1/jobs/JOB_ID
-
-curl -L -H "Authorization: Bearer $EPLUS_WORKER_API_KEY" \
-  -o results.zip \
-  https://vibe23-energyplus-worker.onrender.com/v1/jobs/JOB_ID/results
-```
-
-List recent jobs + queue depth (Streamlit sidebar uses this):
-
-```bash
-curl -H "Authorization: Bearer $EPLUS_WORKER_API_KEY" \
-  "https://vibe23-energyplus-worker.onrender.com/v1/jobs?limit=20"
-```
-
-`/healthz` also reports `queue: {queued, running, max_concurrent}` after this version is deployed.
-
-## Local development
-
-```bash
-docker build -t vibe23-energyplus-worker .
-docker run --rm -p 8000:8000 -e API_KEY=local-secret vibe23-energyplus-worker
-```
-
-Open [http://localhost:8000/docs](http://localhost:8000/docs).
-
-Python-only checks (no EnergyPlus binary build):
-
-```bash
-python -m venv .venv
-. .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt -r requirements-alfalfa.txt pytest ruff
-pytest -q
-ruff check app tests
-```
-
-## Operational behavior
-
-- `API_KEY` bearer token required for every job endpoint.
-- `MAX_CONCURRENT_JOBS=1` avoids CPU contention on a small instance.
-- `SIM_TIMEOUT_SECONDS=900` caps one EnergyPlus process at 15 minutes.
-- `MAX_UPLOAD_MB=50` per uploaded file.
-- `JOB_TTL_HOURS=24` cleans old jobs on later activity.
-- Results ZIP is returned even on severe/fatal EnergyPlus errors so callers can read `eplusout.err`.
-- Running jobs do not survive a restart; completed files live only on the instance filesystem unless you add a persistent disk or object storage.
-
-## Vibe 23 integration
-
-This service runs **one prepared IDF + one EPW** per job. The Studio client in [`vibe_code_apps_23`](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) prepares candidate IDFs, submits/polls jobs, and builds `ranking.json` / `twin_export.json`.
-
-For large catalogs (up to 169 cells), keep concurrency low and watch free-tier sleep + CPU limits.
-
-## Alfalfa client integration test
-
-The actual Alfalfa server is a multi-service stack (web/API, simulation workers, MongoDB, Redis, MinIO). Its client cannot control this batch worker. To test interactive HVAC/grid-flex controls, first run the upstream Alfalfa stack separately (e.g. its documented Docker Compose deployment). Then install the optional pinned integration dependencies:
-
-```bash
-pip install -r requirements-alfalfa.txt
-```
-
-Set `ALFALFA_URL` to the running Alfalfa server (and optionally `ALFALFA_RUN_ID` to a running test run), then execute:
-
-```bash
-python scripts/alfalfa_smoke.py
-# optional: live test of writable points and advancement on a disposable external-clock run
-ALFALFA_RUN_ID=<your-test-run-id> ALFALFA_CONTROL_INPUT=<point-name> ALFALFA_CONTROL_VALUE=22 python scripts/alfalfa_smoke.py --control
-```
-
-The default smoke test verifies the real package import and client construction without contacting an external server; pass `--live` to verify a configured server (read-only). The `--control` test writes to a supplied point and advances the model **once**, so only use it against a disposable test run. `pytest -q` exercises the import and configuration of `alfalfa-client`; the live test needs an accessible Alfalfa server and is not run by ordinary CI.
-
-**Render:** The existing single Docker web service deploys the batch worker and its FastAPI docs. It does not launch the full Alfalfa stack, and job data is ephemeral across restarts unless backed by durable storage. For interactive Alfalfa, deploy the upstream multi-container infrastructure separately (or configure several appropriate paid services with persistent databases/object storage). See [upstream deployment](https://github.com/NatLabRockies/alfalfa) and [Render disk documentation](https://render.com/docs/disks).
-
-## License and provenance
-
-Worker code is MIT. EnergyPlus is downloaded from the official NatLabRockies release and retains its own license. This repository does not redistribute the EnergyPlus archive.
+Local checkout is pinned to Alfalfa commit `6c76e0b04fccc1fcbf64f8304bf622bc26710368` on the laboratory's `develop` branch as inspected 2026-11-23. The Render image currently uses the upstream `latest` tag pending an image digest pin; this is a limitation to resolve before claiming reproducibility.

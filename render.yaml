@@ -1,19 +1,29 @@
+# Public Alfalfa web ONLY. Configure separate worker, MongoDB, Redis, and S3.
+# Environment variables marked sync:false must be set in Render before this can work.
 services:
   - type: web
     name: vibe23-energyplus-worker
     runtime: docker
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /healthz
     autoDeploy: true
     envVars:
-      - key: API_KEY
-        generateValue: true
-      - key: MAX_CONCURRENT_JOBS
-        value: "1"
-      - key: JOB_TTL_HOURS
-        value: "24"
-      - key: MAX_UPLOAD_MB
-        value: "50"
-      - key: SIM_TIMEOUT_SECONDS
-        value: "900"
-
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JOB_QUEUE
+        value: Alfalfa Job Queue
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_REGION
+        value: us-east-1
+      - key: S3_BUCKET
+        value: alfalfa
+      - key: S3_URL
+        sync: false
+      - key: S3_URL_EXTERNAL
+        sync: false
