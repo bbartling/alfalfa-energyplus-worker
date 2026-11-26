@@ -1,68 +1,86 @@
-# Local Alfalfa + EnergyPlus playground
+# Docker HVAC telemetry / EnergyPlus twin prototype
 
-This is a small **local-only** experiment harness for the official [Alfalfa virtual building service](https://github.com/NatLabRockies/alfalfa), maintained by the national laboratory. There is no custom FastAPI backend, Render deployment, or API version compatibility layer here.
+Local daily batch replay: an IoT server posts thermostat setpoints, HVAC runtime,
+and zone temperature summaries. A serial worker runs real EnergyPlus 26.1.0 in
+Docker and retains observations, model provenance, logs, and comparisons.
+No host Python or EnergyPlus is required.
 
-Alfalfa itself uses five Docker Compose services: web API, simulation worker, Redis, MongoDB, and MinIO. They all run **on your computer**; you do not need AWS S3 or a hosted database.
-
-## Prerequisites
-
-- Windows PowerShell, Git, and Docker Desktop (Linux containers + Docker Compose)
-- Python 3.10+ for the optional client example
-- Free disk space for large simulation images; allow at least 8 GB RAM as a starting point
-
-## Start the official stack
-
-Clone this repository and run from its root:
+## Run in PowerShell
 
 ```powershell
-git clone https://github.com/bbartling/alfalfa-energyplus-worker.git
-cd alfalfa-energyplus-worker
-.\start-local.ps1
+docker compose up -d --build
+docker compose exec -T twin python -m unittest discover -s tests -v
+docker compose exec -T twin python examples/demo.py
 ```
 
-The script clones the **unmodified upstream Alfalfa repository** into `_alfalfa_upstream/`, checks out pinned commit `6c76e0b04fccc1fcbf64f8304bf622bc26710368`, and runs `docker compose up --build` using upstream's own `docker-compose.yml` and `.env`. The first run can take a long time and use substantial disk space.
+API documentation: http://localhost:8088/docs
+The demo uses synthetic observations, not measured building data.
 
-- API docs: http://localhost/docs
-- Web: http://localhost/
-- MinIO: http://localhost:9000
+## API contract
 
-**Security:** Upstream's example `.env` uses development credentials and exposes ports. This setup is for a trusted local development computer only; do not expose these services to the public internet or forward their ports.
+POST /replays accepts site_id, model_id (demo-five-zone-v1), and intervals.
+Each interval contains timestamp, heating_setpoint_c, cooling_setpoint_c,
+optional zone_temperature_mean_c, and optional hvac_runtime_seconds.
+See examples/demo.py for a complete payload and the generated API docs for schema.
 
-## Test the Python client
+Supply exactly 96 contiguous 15-minute records for one full 2025 day, beginning
+at midnight. Timestamps mark interval starts in building-local standard time,
+without DST or UTC offsets. Temperatures are Celsius; runtime is seconds within
+that interval (0–900). Heating must be below cooling. Unknown fields, invalid
+values, gaps, duplicate timestamps, and unregistered models are rejected.
 
-Open a **second** PowerShell terminal in the repository directory:
+GET /replays/{id} reports queued/running/completed/failed and returns comparisons
+on completion. GET /replays/{id}/artifacts/{name} downloads request.json,
+provenance.json, results.json, model.epJSON, process.log, eplusout.err, or
+eplusout.csv. Data persists in the Compose named volume. At most four jobs are
+active, with one simulation at a time and a 180-second subprocess timeout.
+Interrupted jobs are marked failed on restart; resubmit them. Submissions are
+append-only with no deduplication or automatic retry. Use one API process.
+
+## Demo assumptions
+
+The bundled upstream 5Zone_IdealLoadsAirSystems_ReturnPlenum.idf is converted to
+epJSON inside Docker. The adapter replaces Htg-SetP-Sch and Clg-SetP-Sch with
+15-minute file schedules. These control ALL FIVE zones; only SPACE1-1 is compared
+to the supplied temperature summaries. The daily pattern repeats across a
+non-leap schedule year and warmup; only the requested day is simulated. Each job
+starts fresh, without thermal state carried between days. Weather is Chicago
+TMY, not measured site weather.
+
+Runtime is an observed outcome, not a thermostat temperature. It is retained but
+not inferred into a setpoint. This ideal-loads model does not predict compressor
+runtime or compressor electricity. Actual buildings need a registered zone and
+equipment mapping and suitable HVAC model. Arbitrary IDF uploads are unsupported.
+
+## Calibration path / Guideline 14
+
+Temperature RMSE and bias in Celsius are diagnostics. Guideline 14 compliance is
+explicitly not assessed. No parameter optimizer is implemented.
+Next: register the real building model, use actual-period weather, ingest metered
+energy, version bounded parameters (envelope, gains, infiltration, capacity,
+efficiency), and evaluate candidates on training and held-out periods.
+Align energy observations and predictions at the same interval and meter boundary
+before computing NMBE and CV(RMSE), with documented parameter-count conventions
+and an agreed M&V plan. References:
+
+- [FEMP M&V Guidelines 5.0](https://www.energy.gov/sites/default/files/2024-10/mv_guide_5_0.pdf)
+- [ASHRAE Standard 209 addendum j](https://www.ashrae.org/file%20library/technical%20resources/standards%20and%20guidelines/standards%20addenda/209_2018_j_20240930.pdf)
+
+## Operations
 
 ```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
-python .\pacer_experiment.py --check
-```
-
-To submit a model prepared according to the [official Alfalfa notebooks](https://github.com/NatLabRockies/alfalfa-notebooks):
-
-```powershell
-python .\pacer_experiment.py --model .\path\to\compatible-model --steps 3
-```
-
-The script can optionally set an exposed model input using `--input-name` and `--input-value`. An arbitrary EnergyPlus IDF may need preparation to expose controls before it works with the Alfalfa API.
-
-## Stop / reset
-
-From another PowerShell terminal:
-
-```powershell
-cd .\_alfalfa_upstream
+docker compose logs --tail 50
 docker compose down
 ```
 
-To **delete local volumes and simulation metadata** as well, use `docker compose down -v` (destructive).
+Down preserves artifacts; down -v deletes them. The service binds only to
+localhost. A remote IoT deployment needs authentication, TLS, ingress, and tenant
+isolation. The matching Linux examples and weather are included in the image;
+the Windows EnergyPlus installation and unrelated containers are untouched.
 
-## What is and isn't provided
+## Original Alfalfa workflow
 
-- **Provided:** local launcher and an example using the official `pacer-client` package.
-- **Not provided:** a hosted service, a custom REST API, a prepackaged EnergyPlus model, or verified end-to-end simulation results.
-- **Upstream:** https://github.com/NatLabRockies/alfalfa
-- **Python client:** https://github.com/NatLabRockies/alfalfa-client
-
-This repository does not modify or vendor the national laboratory's source code.
+start-local.ps1, pacer_experiment.py, and requirements.txt preserve the previous
+upstream Alfalfa launcher/client workflow. Run ./start-local.ps1 separately for
+that stack. This replay service calls EnergyPlus directly and does not implement
+or exercise the Alfalfa API. It isolates the telemetry/model-mapping experiment.
