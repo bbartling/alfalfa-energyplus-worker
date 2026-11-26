@@ -66,10 +66,12 @@ GET /replays/{id} returns job state/results and the official alfalfa_run_id.
 GET /replays/{id}/artifacts/{name} serves request.json, provenance.json,
 results.json, progress.json, cleanup_error.json, or alfalfa-run.tar.gz.
 The archive is downloaded through Alfalfa's own run-download endpoint and MinIO.
-S3_URL_EXTERNAL uses host.docker.internal for container clients. On Windows hosts
-where that name resolves to an inaccessible address, use the telemetry artifact
-endpoint for downloads rather than following the Alfalfa UI's raw S3 redirect.
-No signatures or upload URLs are rewritten by the client.
+S3_URL_EXTERNAL uses kubernetes.docker.internal, a Docker Desktop hostname that
+already resolves to loopback on this Windows machine. Compose maps that same
+hostname to host-gateway inside client/test containers. This lets Windows and
+Docker clients follow the same signed S3 URLs without changing system DNS or
+rewriting signatures. No running Kubernetes cluster is required. On another host,
+verify that hostname resolves to loopback before using this local configuration.
 
 One client job runs at a time; up to four can queue. Each replay submits a fresh
 model/run; there is no cross-day thermal state continuity or submission dedup.
@@ -103,3 +105,38 @@ containers are untouched. The prior direct EnergyPlus prototype is preserved in
 compose.standalone.yaml / Dockerfile.standalone / app/standalone_server.py; use it
 only as an explicitly separate experiment. It is not the Alfalfa compatibility
 path. Its port 8088 conflicts with telemetry, so do not run both together.
+
+## Unmodified upstream regression tests
+
+A separate optional test image adds pytest/client tooling to the official worker
+image; it does not modify the running worker. It mounts upstream tests read-only.
+Run the two official schedule tests and Python EMS enable/disable test:
+
+```powershell
+docker compose --profile verification build integration
+docker compose --profile verification run --rm --no-deps integration
+```
+
+These cover automatic input/output point creation, schedule writes/readbacks,
+Python plugin I/O, and release of an actuator back to the model using null.
+
+## Source identity and local verification
+
+The pinned published application images contain runtime code matching upstream
+revision af3caee5036d6c6ac10558307d7fd31fe12857de. The Compose/test fixture checkout
+is the separately pinned 6c76e0b revision; it includes newer upstream changes.
+The running images are not claimed to be builds of that newer checkout.
+
+```powershell
+python tools/audit_upstream.py
+```
+
+This read-only optional audit compares 37 worker Python/Ruby/workflow files and
+7 web API JavaScript files with their upstream git content, normalizing CRLF.
+All 44 checked files matched. Python is needed on the host only for this optional
+source audit; all service operation and simulation tests run in Docker.
+
+Verified locally: three upstream integration tests passed, three client contract
+tests passed, full daily replay completed 96 intervals/1440 advances with matching
+control readbacks, official run archives downloaded and validated, direct Windows
+signed S3 download succeeded, and start-local.ps1 completed successfully.

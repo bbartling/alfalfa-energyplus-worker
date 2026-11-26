@@ -5,7 +5,7 @@ services:
     ports: !override
       - "127.0.0.1:80:80"
     environment:
-      S3_URL_EXTERNAL: http://host.docker.internal:9000
+      S3_URL_EXTERNAL: http://kubernetes.docker.internal:9000
   minio:
     ports: !override
       - "127.0.0.1:9000:9000"

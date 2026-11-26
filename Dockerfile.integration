@@ -1,0 +1,4 @@
+FROM ghcr.io/natlabrockies/alfalfa/worker@sha256:11f78f6526eb23abfc71937b1c2c31b63f034940148583afda3f38679289accf
+# Test tooling only, in a separate disposable image. Running worker is untouched.
+RUN pip3 install --no-cache-dir alfalfa-client==1.0.0 pytest==8.3.5
+WORKDIR /alfalfa

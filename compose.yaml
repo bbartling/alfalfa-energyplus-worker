@@ -4,6 +4,17 @@ include:
       - ./alfalfa.local.yaml
     project_directory: ./_alfalfa_upstream
 services:
+  integration:
+    profiles: [verification]
+    build:
+      context: .
+      dockerfile: Dockerfile.integration
+    env_file: ./_alfalfa_upstream/.env
+    extra_hosts:
+      - "kubernetes.docker.internal:host-gateway"
+    volumes:
+      - ./_alfalfa_upstream/tests:/alfalfa/tests:ro
+    command: ["python3", "-m", "pytest", "-c", "/dev/null", "--rootdir=/alfalfa", "-o", "markers=integration:upstream integration tests", "-v", "--host", "http://web", "tests/integration/test_schedule_override.py", "tests/integration/test_small_office_osw.py::test_io_enable_disable"]
   telemetry:
     build:
       context: .
@@ -13,6 +24,8 @@ services:
     environment:
       ALFALFA_URL: http://web
       ALFALFA_MODEL: /models/schedule_model
+    extra_hosts:
+      - "kubernetes.docker.internal:host-gateway"
     volumes:
       - twin-data:/data
       - ./_alfalfa_upstream/tests/integration/models:/models:ro
