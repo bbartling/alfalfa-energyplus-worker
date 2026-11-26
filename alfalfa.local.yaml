@@ -1,0 +1,27 @@
+# Deployment-only overrides; upstream application and worker remain unmodified.
+services:
+  web:
+    image: ghcr.io/natlabrockies/alfalfa/web@sha256:061258c06a8696e24384ca4d38c0e011e908e3d0135ee53360ec70b4a49febe1
+    ports: !override
+      - "127.0.0.1:80:80"
+    environment:
+      S3_URL_EXTERNAL: http://host.docker.internal:9000
+  minio:
+    ports: !override
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - alfalfa-s3:/data
+  mongo:
+    ports: !override []
+    volumes:
+      - alfalfa-mongo:/data/db
+  redis:
+    ports: !override []
+    volumes:
+      - alfalfa-redis:/data
+  worker:
+    image: ghcr.io/natlabrockies/alfalfa/worker@sha256:11f78f6526eb23abfc71937b1c2c31b63f034940148583afda3f38679289accf
+volumes:
+  alfalfa-s3:
+  alfalfa-mongo:
+  alfalfa-redis:

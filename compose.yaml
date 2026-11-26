@@ -1,17 +1,28 @@
+include:
+  - path:
+      - ./_alfalfa_upstream/docker-compose.yml
+      - ./alfalfa.local.yaml
+    project_directory: ./_alfalfa_upstream
 services:
-  twin:
-    build: .
+  telemetry:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
     ports:
       - "127.0.0.1:8088:8080"
+    environment:
+      ALFALFA_URL: http://web
+      ALFALFA_MODEL: /models/schedule_model
     volumes:
       - twin-data:/data
+      - ./_alfalfa_upstream/tests/integration/models:/models:ro
+    depends_on:
+      - web
     init: true
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
       interval: 10s
       timeout: 3s
       retries: 6
-    mem_limit: 2g
-    cpus: 2
 volumes:
   twin-data:

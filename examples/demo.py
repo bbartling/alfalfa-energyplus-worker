@@ -14,7 +14,7 @@ request = urllib.request.Request("http://localhost:8080/replays", json.dumps(pay
                                  {"Content-Type": "application/json"})
 job = json.load(urllib.request.urlopen(request))
 print(json.dumps(job), flush=True)
-for _ in range(180):
+for _ in range(1800):
     result = json.load(urllib.request.urlopen("http://localhost:8080" + job["status_url"]))
     if result["status"] in ("completed", "failed"):
         print(json.dumps(result, indent=2))
