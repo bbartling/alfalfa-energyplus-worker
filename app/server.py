@@ -1,10 +1,9 @@
 """Local daily telemetry replay. One serial simulation worker; durable job artifacts."""
-import hashlib
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -28,7 +27,7 @@ async def lifespan(app):
     yield
 
 
-api = FastAPI(title="HVAC telemetry → EnergyPlus daily replay", version="0.1.0", lifespan=lifespan)
+api = FastAPI(title="HVAC telemetry → upstream Alfalfa replay", version="0.2.0", lifespan=lifespan)
 
 
 class Interval(BaseModel):

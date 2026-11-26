@@ -1,2 +1,2 @@
-pacer-client
+alfalfa-client==1.0.0
 requests

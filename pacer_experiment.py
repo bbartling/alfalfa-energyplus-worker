@@ -1,4 +1,4 @@
-"""Exercise the OFFICIAL Alfalfa REST API via the upstream pacer-client.
+"""Exercise the OFFICIAL Alfalfa REST API via the upstream alfalfa-client.
 
 Requires the locally running official Alfalfa Docker Compose stack.
 The supplied model must be an upstream-compatible model folder or file.
@@ -23,15 +23,15 @@ def main() -> int:
     parser.add_argument("--input-value", type=float, help="Value for exposed control point")
     args = parser.parse_args()
 
-    from pacer_client.pacer_client import PacerClient
+    from alfalfa_client.alfalfa_client import AlfalfaClient
 
-    client = PacerClient(args.host)
+    client = AlfalfaClient(args.host)
     print("Official Alfalfa API:", client.url)
     if args.check:
         import requests
-        response = requests.get(args.host.rstrip("/") + "/docs", timeout=30)
+        response = requests.get(args.host.rstrip("/") + "/api/v2/runs", timeout=30)
         response.raise_for_status()
-        print("API documentation endpoint:", response.status_code)
+        print("Official runs API endpoint:", response.status_code)
         return 0
     if not args.model or not args.model.exists():
         parser.error("--model must refer to an existing Alfalfa-compatible model")

@@ -35,3 +35,22 @@ Windows host.docker.internal resolves to an inaccessible IP on this machine;
 containers can use it. Therefore expose downloaded official archive through the
 telemetry artifact endpoint for Windows users. Do not modify Windows hosts/DNS.
 No local-worker inference used. Unrelated PostgreSQL containers untouched.
+
+## Completed verification checkpoint
+
+Full replay COMPLETED: 96 intervals / 1440 official minute advances, last clock
+2025-07-08 00:00:00. Both thermostat schedule readbacks matched every advance.
+Official archive contains 60 entries. Download through the telemetry artifact
+endpoint succeeded from Windows (2,026,640 bytes).
+
+Updated smoke (archive validation included) also completed successfully on rebuilt
+client: Alfalfa run 618d8fa0-e9d1-11f1-bb6d-8da2cff8362b. Log:
+work/alfalfa-final-smoke.log; durable evidence /data/alfalfa-smoke.json and
+/data/alfalfa-smoke.tar.gz in the Docker client volume. Three contract tests pass.
+
+Canonical Dockerfile is now the lightweight client; prior EPlus image is only
+Dockerfile.standalone. Added PYTHONPATH=/app for standalone example invocation.
+A final client image rebuild is in progress (session 19859); log
+work/client-final-build.log. Once build finishes, start telemetry with
+`docker compose up -d --no-build --no-deps telemetry` and confirm healthy.
+The user reiterated commit/push now and continue autonomous verification.
