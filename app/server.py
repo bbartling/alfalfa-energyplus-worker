@@ -123,7 +123,10 @@ def run(job, request):
                 "interpolate_to_timestep": "No", "minutes_per_item": 15}
         model["Output:Variable"] = {"temperature": {"key_value": "SPACE1-1",
             "variable_name": "Zone Mean Air Temperature", "reporting_frequency": "Timestep"}}
-        model["OutputControl:Files"] = {"": {"output_csv": "Yes"}}
+        for name, field in mappings:
+            model["Output:Variable"][field] = {"key_value": name,
+                "variable_name": "Schedule Value", "reporting_frequency": "Timestep"}
+        model["OutputControl:Files"] = {"": {"output_csv": "No"}}
         write_json(folder / "model.epJSON", model)
         write_json(folder / "provenance.json", {
             "model_id": request.model_id, "energyplus": "26.1.0",
@@ -133,12 +136,17 @@ def run(job, request):
             "scope": "setpoints apply to all five demo zones; temperature comparison is SPACE1-1",
             "runtime_policy": "retained as observation; no runtime-to-setpoint inference",
             "time_basis": "2025 building-local standard time; interval starts; no DST"})
-        execute([str(EPLUS / "energyplus"), "-w", str(weather), "model.epJSON"], folder)
+        execute([str(EPLUS / "energyplus"), "-r", "-w", str(weather), "model.epJSON"], folder)
         with (folder / "eplusout.csv").open() as stream:
             rows = list(csv.DictReader(stream))
         column = next(k for k in rows[0] if "SPACE1-1:Zone Mean Air Temperature" in k)
         if len(rows) != 96:
             raise ValueError(f"expected 96 simulation intervals, got {len(rows)}")
+        for name, field in mappings:
+            schedule_column = next(k for k in rows[0] if f"{name}:Schedule Value".casefold() in k.casefold())
+            for obs, sim in zip(request.intervals, rows):
+                if abs(float(sim[schedule_column]) - getattr(obs, field)) > 0.001:
+                    raise ValueError(f"schedule replay mismatch: {name}")
         comparisons = [{"timestamp": obs.timestamp.isoformat(), "simulated_temperature_c": float(sim[column]),
                         "measured_temperature_c": obs.zone_temperature_mean_c,
                         "hvac_runtime_seconds": obs.hvac_runtime_seconds}
