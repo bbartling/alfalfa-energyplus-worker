@@ -1,8 +1,9 @@
 import copy
 import unittest
 from datetime import datetime, timedelta
-from fastapi.testclient import TestClient
+
 from app.server import api
+from fastapi.testclient import TestClient
 
 
 class ContractTest(unittest.TestCase):

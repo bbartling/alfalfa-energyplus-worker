@@ -1,8 +1,8 @@
 import hashlib
 import json
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 
 root = Path('_alfalfa_upstream')
 reference = sys.argv[1] if len(sys.argv) > 1 else 'af3caee5036d6c6ac10558307d7fd31fe12857de'

@@ -1,7 +1,7 @@
 # Launch upstream Alfalfa and the separate telemetry client.
 param([string]$Destination = "$PSScriptRoot\_alfalfa_upstream")
 $ErrorActionPreference = "Stop"
-$sha = "6c76e0b04fccc1fcbf64f8304bf622bc26710368"
+$sha = "af3caee5036d6c6ac10558307d7fd31fe12857de"
 if ([IO.Path]::GetFullPath($Destination) -ne [IO.Path]::GetFullPath("$PSScriptRoot\_alfalfa_upstream")) {
     throw "Compose uses the pinned _alfalfa_upstream directory; custom destinations are unsupported"
 }
@@ -25,13 +25,16 @@ try {
 } finally { Pop-Location }
 Push-Location $PSScriptRoot
 try {
-    docker compose pull web worker minio mc mongo redis
+    if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+    Get-Content .env | ForEach-Object {
+        if ($_ -match '^\s*#' -or $_ -notmatch '=') { return }
+        $name, $value = $_.Split('=', 2)
+        Set-Item -Path "env:$name" -Value $value
+    }
+    docker compose -f compose.alfalfa.yaml pull web worker minio mc mongo redis
     if ($LASTEXITCODE -ne 0) { throw "Unable to pull upstream images" }
-    docker compose build telemetry
+    docker compose -f compose.alfalfa.yaml build telemetry
     if ($LASTEXITCODE -ne 0) { throw "Unable to build telemetry client" }
-    # Migrate an existing direct-EnergyPlus demo without deleting its volume.
-    docker compose -f compose.standalone.yaml stop twin
-    if ($LASTEXITCODE -ne 0) { throw "Unable to stop legacy standalone demo" }
-    docker compose up -d --no-build
+    docker compose -f compose.alfalfa.yaml up -d --no-build
     if ($LASTEXITCODE -ne 0) { throw "Alfalfa failed to start" }
 } finally { Pop-Location }

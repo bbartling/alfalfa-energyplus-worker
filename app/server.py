@@ -8,12 +8,28 @@ from pathlib import Path
 from threading import Lock
 from uuid import uuid4
 
+from app.alfalfa_backend import run
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-ROOT = Path(os.getenv("TWIN_DATA", "/data"))
-ROOT.mkdir(parents=True, exist_ok=True)
+
+def _data_root() -> Path:
+    configured = os.getenv("TWIN_DATA")
+    if configured:
+        path = Path(configured)
+    else:
+        path = Path("/data")
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            return path
+        except OSError:
+            path = Path("work/data")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+ROOT = _data_root()
 ALFALFA_URL = os.getenv("ALFALFA_URL", "http://web")
 pool = ThreadPoolExecutor(max_workers=1)
 lock = Lock()
@@ -70,9 +86,6 @@ def write_json(path, value):
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps(value, indent=2, allow_nan=False))
     temporary.replace(path)
-
-
-from app.alfalfa_backend import run
 
 
 @api.get("/health")

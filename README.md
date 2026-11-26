@@ -8,13 +8,20 @@ A separate custom telemetry client translates IoT observations into official
 Alfalfa API calls. It is NOT a replacement Alfalfa API or an Alfalfa certification.
 The earlier direct-EnergyPlus experiment is optional and no longer the default.
 
-## Start (PowerShell, Docker Desktop Linux containers)
+## Start (Linux or macOS)
 
-```powershell
-./start-local.ps1
-docker compose exec -T telemetry python examples/alfalfa_smoke.py
-docker compose exec -T telemetry python examples/demo.py
+```bash
+make test
+bash scripts/launch.sh up
+docker compose -f compose.alfalfa.yaml exec -T telemetry python examples/alfalfa_smoke.py
 ```
+
+The launcher checks out Alfalfa at `af3caee` (the revision inside the pinned images),
+loads `.env`, and sets `S3_URL_EXTERNAL` to `http://minio:9000`. That hostname
+resolves on the Compose network, so model upload works on Linux. Alfalfa publishes
+no host ports. `kubernetes.docker.internal` is not used.
+
+Windows can still run `./start-local.ps1`, which applies the same `.env`.
 
 The launcher clones upstream at 6c76e0b04fccc1fcbf64f8304bf622bc26710368,
 pulls official images, builds only the telemetry client, and starts the stack.
@@ -26,8 +33,8 @@ use the launcher, or build telemetry then up -d --no-build.
 - Alfalfa UI: http://localhost/
 - Upstream rendered API reference: http://localhost/redoc
 - Official API: http://localhost/api/v2/runs
-- Telemetry client schema: http://localhost:8088/docs
-- MinIO S3 endpoint: http://localhost:9000
+- Telemetry client: `docker compose -f compose.alfalfa.yaml exec -T telemetry` (no host port)
+- MinIO S3 endpoint inside the network: http://minio:9000
 
 Upstream /docs currently returns 404 in this published image; /redoc works.
 All exposed ports bind localhost. Redis and MongoDB are internal to Docker.
@@ -66,12 +73,9 @@ GET /replays/{id} returns job state/results and the official alfalfa_run_id.
 GET /replays/{id}/artifacts/{name} serves request.json, provenance.json,
 results.json, progress.json, cleanup_error.json, or alfalfa-run.tar.gz.
 The archive is downloaded through Alfalfa's own run-download endpoint and MinIO.
-S3_URL_EXTERNAL uses kubernetes.docker.internal, a Docker Desktop hostname that
-already resolves to loopback on this Windows machine. Compose maps that same
-hostname to host-gateway inside client/test containers. This lets Windows and
-Docker clients follow the same signed S3 URLs without changing system DNS or
-rewriting signatures. No running Kubernetes cluster is required. On another host,
-verify that hostname resolves to loopback before using this local configuration.
+S3_URL_EXTERNAL is http://minio:9000 so presigned uploads stay on the Compose
+network. That works on Linux and on Docker Desktop. Alfalfa, MongoDB, Redis, and
+MinIO are not published on host ports.
 
 One client job runs at a time; up to four can queue. Each replay submits a fresh
 model/run; there is no cross-day thermal state continuity or submission dedup.
@@ -94,17 +98,14 @@ with a documented M&V plan. Temperature fit alone is insufficient.
 ## Operations
 
 ```powershell
-docker compose ps
-docker compose logs --tail 50 web worker telemetry
-docker compose exec -T telemetry python -m unittest discover -s tests -v
-docker compose down
+docker compose -f compose.alfalfa.yaml ps
+docker compose -f compose.alfalfa.yaml logs --tail 50 web worker telemetry
+pytest
+docker compose -f compose.alfalfa.yaml down
 ```
 
 Down preserves volumes; down -v deletes this project's data. Unrelated database
-containers are untouched. The prior direct EnergyPlus prototype is preserved in
-compose.standalone.yaml / Dockerfile.standalone / app/standalone_server.py; use it
-only as an explicitly separate experiment. It is not the Alfalfa compatibility
-path. Its port 8088 conflicts with telemetry, so do not run both together.
+containers are untouched. The direct EnergyPlus prototype has been removed.
 
 ## Unmodified upstream regression tests
 
@@ -113,8 +114,8 @@ image; it does not modify the running worker. It mounts upstream tests read-only
 Run the two official schedule tests and Python EMS enable/disable test:
 
 ```powershell
-docker compose --profile verification build integration
-docker compose --profile verification run --rm --no-deps integration
+docker compose -f compose.alfalfa.yaml --profile verification build integration
+docker compose -f compose.alfalfa.yaml --profile verification run --rm --no-deps integration
 ```
 
 These cover automatic input/output point creation, schedule writes/readbacks,
