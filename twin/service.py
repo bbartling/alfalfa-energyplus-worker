@@ -160,6 +160,9 @@ def execute(session: Session, job: Job) -> Job:
             job.result = calibrate(session, job.site_id)
         elif job.kind == "energyplus-calibration":
             job.result = calibrate_energyplus(session, job.site_id, span=job.spec.get("span") or "year")
+        elif job.kind == "energyplus-scenario":
+            row = run_scenario(session, job.site_id, job.spec["name"], job.spec["measures"], job.spec["costs"])
+            job.result = {"scenario_id": row.id, **(row.result or {})}
         elif job.kind == "tracking":
             job.result = track(session, job.site_id)
         else:
@@ -301,12 +304,17 @@ def run_scenario(session: Session, site_id: str, name: str, measures: list[dict]
     version = active_version(session, site_id)
     if version is None:
         raise NotReady("no active model for a what-if")
-    months = usable_months(session, site_id)
-    if len(months) < 2:
-        raise NotReady("not enough months for a what-if")
     area = session.get(Site, site_id).floor_area_m2
-    baseline = Params(**version.parameters)
-    result = price_measures(baseline, months, area, measures, costs, version.ensemble)
+    if version.engine.get("name") == "energyplus":
+        result = _price_energyplus(session, site_id, version, measures, costs)
+    else:
+        months = usable_months(session, site_id)
+        if len(months) < 2:
+            raise NotReady("not enough months for a what-if")
+        baseline = Params(**version.parameters)
+        result = price_measures(baseline, months, area, measures, costs, version.ensemble)
+        result["engine"] = "quick-estimate"
+        result["label"] = "quick estimate"
     scenario = Scenario(
         id=str(uuid4()),
         site_id=site_id,
@@ -337,6 +345,26 @@ def price_measures(params: Params, months: list[dict], area: float, measures: li
         "npv_usd": net_present_value(costs["implementation_usd"], annual, costs["discount_rate"], costs["horizon_years"]),
         "cost_savings_band_usd": [min(band), max(band)] if band else [annual, annual],
     }
+
+
+def active_engine(session: Session, site_id: str) -> str | None:
+    version = active_version(session, site_id)
+    if version is None:
+        return None
+    return version.engine.get("name")
+
+
+def _price_energyplus(session: Session, site_id: str, version: ModelVersion, measures: list[dict], costs: dict) -> dict:
+    from twin.eplus import simulate, weather_file
+    from twin.eplus_calibrate import price_energyplus
+
+    site = session.get(Site, site_id)
+    weather = weather_file(site.latitude)
+
+    def run_fn(case: dict, span: str) -> dict:
+        return simulate(case, weather, span)
+
+    return price_energyplus(version.parameters, measures, costs, site.floor_area_m2, run_fn, version.ensemble)
 
 
 def net_present_value(initial: float, annual: float, rate: float, years: int) -> float:

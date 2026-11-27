@@ -48,6 +48,8 @@ docker compose --profile energyplus up --build -d
 
 CI runs two three-day simulations (`pytest -m energyplus`), not the full grid. `make test` skips that marker.
 
+An ROI what-if on a quick-estimate model stays in that model and is labeled quick estimate. A what-if on an EnergyPlus calibration is queued the same way and reruns the calibrated case, then the case with the measure applied (setpoint change or a shorter occupied window). The savings, payback, NPV, and ensemble band come from those runs.
+
 A monthly policy and a weekly tracking policy live on `POST /v1/sites/{site_id}/policies`. `POST /v1/scheduler/tick` enqueues what is due. Two tracking results with CV(RMSE) above 30% enqueue a recalibration. Long runs can be pulled by `python -m twin.runner` with `TWIN_INLINE_JOBS=0`.
 
 ## Tests

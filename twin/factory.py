@@ -21,6 +21,7 @@ from twin.schemas import ApiKeyIn, OperationsBatch, PolicyIn, ScenarioIn, SiteIn
 from twin.service import (
     Conflict,
     NotReady,
+    active_engine,
     coverage,
     create_job,
     execute,
@@ -211,14 +212,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/v1/sites/{site_id}/scenarios")
     def scenario(site_id: str, body: ScenarioIn, key: ApiKey = Depends(principal), session: Session = Depends(db)):
         allow(site_id, key)
-        try:
-            row = run_scenario(
+        measures = [item.model_dump() for item in body.measures]
+        costs = body.costs.model_dump()
+        if active_engine(session, site_id) == "energyplus" and not settings.energyplus_inline:
+            job = create_job(
                 session,
                 site_id,
-                body.name,
-                [item.model_dump() for item in body.measures],
-                body.costs.model_dump(),
+                "energyplus-scenario",
+                {"name": body.name, "measures": measures, "costs": costs},
             )
+            session.commit()
+            return JSONResponse(status_code=202, content=_job_body(job))
+        try:
+            row = run_scenario(session, site_id, body.name, measures, costs)
         except NotReady as exc:
             raise APIError(409, str(exc)) from exc
         return {"id": row.id, "status": row.status, "result": row.result}

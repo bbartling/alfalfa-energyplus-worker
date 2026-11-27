@@ -1,6 +1,6 @@
 import pytest
 from twin.eplus import monthly_energy, weather_file
-from twin.eplus_calibrate import base_case, conditions_from_payloads, fit
+from twin.eplus_calibrate import apply_measures, base_case, conditions_from_payloads, fit, price_energyplus
 from twin.idfedit import MODEL_AREA_M2, apply_case, load_model, parse_idf
 
 
@@ -96,6 +96,40 @@ def test_monthly_energy_reads_facility_meters_when_warmup_is_null(tmp_path):
     totals = monthly_energy(path)
     assert totals["electric"][1] == pytest.approx(1.0)
     assert totals["gas"][1] == pytest.approx(1.0)
+
+
+def test_what_if_reruns_the_calibrated_energyplus_case():
+    case = base_case(cooling_setpoint_c=24, occupied_end="18:00")
+    calls = []
+
+    def run_fn(current, span):
+        calls.append((current["cooling_setpoint_c"], current["occupied_end"], span))
+        kwh = 50 if current["cooling_setpoint_c"] > 24 else 80
+        return {"electric": {month: kwh for month in range(1, 13)}, "gas": {month: 1 for month in range(1, 13)}}
+
+    other = dict(case)
+    other["lighting_w_m2"] = 12
+    priced = price_energyplus(
+        case,
+        [{"name": "raise_cooling_setpoint", "delta_c": 1}],
+        {
+            "implementation_usd": 2500,
+            "electricity_usd_per_kwh": 0.14,
+            "gas_usd_per_therm": 1.1,
+            "discount_rate": 0,
+            "horizon_years": 1,
+        },
+        MODEL_AREA_M2,
+        run_fn,
+        ensemble=[case, other],
+    )
+    assert calls[0] == (24, "18:00", "year")
+    assert calls[1][0] == 25
+    assert priced["annual_kwh_savings"] == pytest.approx(30 * 12)
+    assert priced["engine"] == "energyplus"
+    assert priced["runs"] == 3
+    trimmed = apply_measures(case, [{"name": "trim_run_hours", "fraction": 0.2}])
+    assert trimmed["occupied_end"] == "16:00"
 
 
 def test_weather_file_follows_latitude():

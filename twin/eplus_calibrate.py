@@ -143,6 +143,89 @@ def fit(base: dict, months: list[dict], area: float, run_fn, span: str = "year")
     }
 
 
+def apply_measures(case: dict, measures: list[dict]) -> dict:
+    """Replay ROI measures on the calibrated EnergyPlus case."""
+    updated = dict(case)
+    for measure in measures:
+        if measure["name"] == "raise_cooling_setpoint":
+            updated["cooling_setpoint_c"] = float(updated["cooling_setpoint_c"]) + float(measure["delta_c"])
+        elif measure["name"] == "lower_heating_setpoint":
+            updated["heating_setpoint_c"] = float(updated["heating_setpoint_c"]) - float(measure["delta_c"])
+        elif measure["name"] == "trim_run_hours":
+            updated["occupied_start"], updated["occupied_end"] = _trim_window(
+                updated["occupied_start"], updated["occupied_end"], float(measure["fraction"])
+            )
+    return updated
+
+
+def price_energyplus(case: dict, measures: list[dict], costs: dict, area: float, run_fn, ensemble: list[dict] | None = None) -> dict:
+    """Price a what-if with batch EnergyPlus runs of the calibrated model."""
+    scale = area / MODEL_AREA_M2
+    baseline = run_fn(case, "year")
+    altered = run_fn(apply_measures(case, measures), "year")
+    save_kwh, save_therms = _annual_delta(baseline, altered, scale)
+    usd = _dollars(save_kwh, save_therms, costs)
+    band = [usd]
+    runs = 2
+    promoted = _identity(case)
+    for other in ensemble or []:
+        if _identity(other) == promoted or len(band) >= 3:
+            continue
+        other_alt = run_fn(apply_measures(other, measures), "year")
+        runs += 1
+        other_kwh, other_therms = _annual_delta(baseline, other_alt, scale)
+        band.append(_dollars(other_kwh, other_therms, costs))
+    payback = None if usd <= 0 else costs["implementation_usd"] / usd
+    return {
+        "annual_kwh_savings": save_kwh,
+        "annual_therm_savings": save_therms,
+        "annual_cost_savings_usd": usd,
+        "simple_payback_years": payback,
+        "npv_usd": _npv(costs["implementation_usd"], usd, costs["discount_rate"], costs["horizon_years"]),
+        "cost_savings_band_usd": [min(band), max(band)],
+        "engine": "energyplus",
+        "label": "EnergyPlus",
+        "runs": runs,
+    }
+
+
+def _annual_delta(baseline: dict, altered: dict, scale: float) -> tuple[float, float]:
+    return (
+        _annual(baseline, "electric", scale) - _annual(altered, "electric", scale),
+        _annual(baseline, "gas", scale) - _annual(altered, "gas", scale),
+    )
+
+
+def _annual(raw: dict, key: str, scale: float) -> float:
+    return sum((raw.get(key) or {}).values()) * scale
+
+
+def _dollars(kwh: float, therms: float, costs: dict) -> float:
+    return kwh * costs["electricity_usd_per_kwh"] + therms * costs["gas_usd_per_therm"]
+
+
+def _npv(initial: float, annual: float, rate: float, years: int) -> float:
+    total = -initial
+    for year in range(1, years + 1):
+        total += annual / ((1 + rate) ** year)
+    return total
+
+
+def _trim_window(start: str, end: str, fraction: float) -> tuple[str, str]:
+    start_m = _minutes(start)
+    end_m = _minutes(end)
+    if end_m <= start_m:
+        return start, end
+    kept = (end_m - start_m) * (1 - fraction)
+    finish = start_m + kept
+    return start, f"{int(finish // 60):02d}:{int(finish % 60):02d}"
+
+
+def _minutes(value: str) -> int:
+    hour, minute = (int(part) for part in value.split(":"))
+    return hour * 60 + minute
+
+
 def _score(raw: dict, months: list[dict], scale: float) -> float:
     total = 0.0
     for month in months:
