@@ -3,6 +3,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_quickstart_does_not_bind_port_80():
+    text = (ROOT / "compose.yaml").read_text()
+    assert "127.0.0.1" in text
+    assert "80:80" not in text
+    assert "18080" in text
+
+
 def test_s3_endpoint_is_portable_and_alfalfa_has_no_host_ports():
     overlay = (ROOT / "alfalfa.local.yaml").read_text()
     alfalfa = (ROOT / "compose.alfalfa.yaml").read_text()

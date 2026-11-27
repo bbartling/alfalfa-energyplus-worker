@@ -3,3 +3,4 @@ _alfalfa_upstream
 .venv
 __pycache__
 work
+.env

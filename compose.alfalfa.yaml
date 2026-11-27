@@ -32,7 +32,7 @@ services:
   telemetry:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.client
     environment:
       ALFALFA_URL: http://web
       ALFALFA_MODEL: /models/schedule_model
