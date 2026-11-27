@@ -21,7 +21,7 @@ MQTT is not used. The same JSON could be a message, but a weekly or monthly POST
 }
 ```
 
-Timestamps in batches are RFC 3339 UTC. Schedule clocks are local standard time (`HH:MM`, no daylight-saving shift). The service can convert an instant to that clock with the site's IANA timezone.
+Timestamps in batches are RFC 3339 UTC. Schedule clocks are local standard time (`HH:MM`, no daylight-saving shift). The service can convert an instant to that clock with the site's IANA timezone. The EnergyPlus file does not also enable `RunPeriodControl:DaylightSavingTime`, so a summer hour is not shifted a second time. Weekday and weekend profiles follow `Schedule:Week:Daily` (and `hour_of_week` when the summary includes it), not the day-schedule name. Design-day schedules are left as generated.
 
 ## Operations batch
 
