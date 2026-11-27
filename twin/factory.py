@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import secrets
 import time
 from datetime import datetime, timezone
 
-import httpx
 from fastapi import Depends, FastAPI, Header
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -29,7 +27,6 @@ from twin.service import (
     execute,
     report,
     run_scenario,
-    sign_body,
     site_cards,
     store_batch,
     tick,
@@ -174,7 +171,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         )
         if existing is None:
-            session.add(Policy(tenant_id=key.tenant, site_id=site_id, cadence=body.cadence, kind=body.kind, enabled=True))
+            session.add(
+                Policy(
+                    tenant_id=key.tenant,
+                    site_id=site_id,
+                    cadence=body.cadence,
+                    kind=body.kind,
+                    engine=body.engine or "",
+                    enabled=True,
+                )
+            )
             session.commit()
         return body.model_dump()
 
@@ -189,7 +195,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if settings.inline_jobs:
             for job in jobs:
                 execute(session, job)
-                _notify(session, job)
         return {"jobs": [{"id": job.id, "site_id": job.site_id, "kind": job.kind, "status": job.status, "spec": job.spec} for job in jobs]}
 
     @app.post("/v1/sites/{site_id}/calibrations")
@@ -213,13 +218,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             session.commit()
             if settings.inline_jobs and settings.energyplus_inline:
                 execute(session, job)
-                _notify(session, job)
         else:
             job = create_job(session, site_id, "calibration", {"reason": "manual", "engine": "quick-estimate"})
             session.commit()
             if settings.inline_jobs:
                 execute(session, job)
-                _notify(session, job)
         return JSONResponse(status_code=200 if job.status == "completed" else 202, content=_job_body(job))
 
     @app.get("/v1/jobs/{job_id}")
@@ -273,9 +276,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def add_webhook(body: WebhookIn, key: ApiKey = Depends(principal), session: Session = Depends(db)):
         if "*" not in key.sites:
             raise APIError(403, "only an unrestricted key can register webhooks")
-        session.add(Webhook(tenant_id=key.tenant, url=body.url, secret=body.secret, events=body.events))
+        from twin.webhooks import public_webhook
+
+        try:
+            public_webhook(body.url)
+        except ValueError as exc:
+            raise APIError(422, str(exc)) from exc
+        signing_key = secrets.token_urlsafe(32)
+        session.add(Webhook(tenant_id=key.tenant, url=body.url, secret=signing_key, events=body.events))
         session.commit()
-        return {"status": "registered"}
+        return {"status": "registered", "signing_key": signing_key}
 
     @app.post("/v1/sites/{site_id}/live-runs")
     def live_run(site_id: str, key: ApiKey = Depends(principal), session: Session = Depends(db)):
@@ -302,20 +312,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise APIError(409, str(exc)) from exc
         except NotReady as exc:
             raise APIError(404, str(exc)) from exc
-
-    def _notify(session: Session, job):
-        event = "job.completed" if job.status == "completed" else "calibration.failed"
-        payload = {"event": event, "job": _job_body(job)}
-        body = json.dumps(payload).encode()
-        hooks = session.scalars(select(Webhook).where(Webhook.tenant_id == job.tenant_id)).all()
-        for hook in hooks:
-            if event not in hook.events:
-                continue
-            signature = sign_body(hook.secret, body)
-            try:
-                httpx.post(hook.url, content=body, headers={"X-Twin-Signature": signature}, timeout=2)
-            except httpx.HTTPError:
-                continue
 
     return app
 

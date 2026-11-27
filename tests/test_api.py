@@ -114,7 +114,7 @@ def test_scheduler_is_idempotent_within_a_month_and_drift_recalibrates(client, a
     from twin.db import Job
 
     with client.app.state.Session() as session:
-        for _ in range(2):
+        for _ in range(3):
             session.add(
                 Job(
                     id=f"track-{_}-{spec['site_id']}",
@@ -230,21 +230,27 @@ def test_a_tenant_star_key_cannot_read_another_tenant(client, auth):
 
 
 def test_webhook_events_stay_inside_the_tenant(client, auth, monkeypatch):
+    import socket
+
     from twin.db import Webhook
 
     seen = []
 
     def fake_post(url, **kwargs):
-        seen.append(url)
+        seen.append((url, kwargs["headers"]["X-Twin-Timestamp"]))
+
+    def public_dns(*_args, **_kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))]
 
     monkeypatch.setattr("httpx.post", fake_post)
+    monkeypatch.setattr("twin.webhooks.socket.getaddrinfo", public_dns)
     spec = SITES[0]
     client.post("/v1/sites", json=site_record(spec), headers=auth)
     for batch in batches_for(spec, include_incremental=False):
         client.post(f"/v1/sites/{spec['site_id']}/operations", json=batch, headers=auth)
     registered = client.post(
         "/v1/webhooks",
-        json={"url": "http://tenant-a.example/hook", "secret": "tenant-a-secret", "events": ["job.completed"]},
+        json={"url": "https://tenant-a.example/hook", "secret": "tenant-a-secret", "events": ["job.completed"]},
         headers=auth,
     )
     assert registered.status_code == 201
@@ -252,14 +258,27 @@ def test_webhook_events_stay_inside_the_tenant(client, auth, monkeypatch):
         session.add(
             Webhook(
                 tenant_id="other",
-                url="http://tenant-b.example/hook",
+                url="https://tenant-b.example/hook",
                 secret="tenant-b-secret",
                 events=["job.completed"],
             )
         )
         session.commit()
     assert client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth).status_code == 200
-    assert seen == ["http://tenant-a.example/hook"]
+    assert [item[0] for item in seen] == ["https://tenant-a.example/hook"]
+    assert seen[0][1].isdigit()
+    refused = client.post(
+        "/v1/webhooks",
+        json={"url": "https://127.0.0.1/hook", "secret": "tenant-a-secret", "events": ["job.completed"]},
+        headers=auth,
+    )
+    assert refused.status_code == 422
+    plain = client.post(
+        "/v1/webhooks",
+        json={"url": "http://tenant-a.example/hook", "secret": "tenant-a-secret", "events": ["job.completed"]},
+        headers=auth,
+    )
+    assert plain.status_code == 422
 
 
 def test_a_submeter_a_short_period_and_an_overlap_do_not_enter_calibration(client, auth):
@@ -325,6 +344,84 @@ def test_energyplus_refuses_an_office_outside_the_area_band(client, auth):
         assert client.post(f"/v1/sites/{spec['site_id']}/operations", json=batch, headers=auth).status_code == 200
     response = client.post(f"/v1/sites/{spec['site_id']}/calibrations?engine=energyplus", headers=auth)
     assert response.status_code == 422
+
+
+def test_jobs_are_leased_and_an_expired_lease_fails_after_three_attempts(client):
+    from datetime import timedelta
+
+    from twin.db import Job, utcnow
+    from twin.service import claim_next
+
+    with client.app.state.Session() as session:
+        session.add(
+            Job(
+                id="leased-job",
+                tenant_id="local",
+                site_id="site-cold-office",
+                kind="calibration",
+                status="queued",
+                spec={},
+                created_at=utcnow(),
+            )
+        )
+        session.commit()
+        claimed = claim_next(session)
+        assert claimed.id == "leased-job"
+        assert claimed.status == "running"
+        assert claimed.attempts == 1
+        assert claimed.lease_until > utcnow()
+        claimed.attempts = 3
+        claimed.lease_until = utcnow() - timedelta(seconds=5)
+        session.commit()
+        assert claim_next(session) is None
+        assert session.get(Job, "leased-job").status == "failed"
+
+
+def test_energyplus_tracking_scores_the_typical_year(client, auth, monkeypatch):
+    spec = SITES[0]
+    client.post("/v1/sites", json=site_record(spec), headers=auth)
+    for batch in batches_for(spec, include_incremental=False)[:4]:
+        assert client.post(f"/v1/sites/{spec['site_id']}/operations", json=batch, headers=auth).status_code == 200
+    from twin.db import Job, ModelVersion
+    from twin.eplus_calibrate import base_case
+
+    with client.app.state.Session() as session:
+        session.add(
+            ModelVersion(
+                id="ep-track",
+                tenant_id="local",
+                site_id=spec["site_id"],
+                status="active",
+                parameters=base_case(),
+                ensemble=[base_case()],
+                metrics=[],
+                engine={"name": "energyplus", "label": "EnergyPlus"},
+                created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            )
+        )
+        session.commit()
+
+    def fake_simulate(_case, _weather, _span, timeout=3600):
+        return {"electric": {month: 100.0 for month in range(1, 13)}, "gas": {}}
+
+    monkeypatch.setattr("twin.eplus.simulate", fake_simulate)
+    registered = client.post(
+        f"/v1/sites/{spec['site_id']}/policies",
+        headers=auth,
+        json={"cadence": "monthly", "kind": "tracking", "engine": "energyplus"},
+    )
+    assert registered.status_code == 201
+    ticked = client.post(
+        "/v1/scheduler/tick",
+        headers=auth,
+        params={"now": datetime(2026, 6, 2, tzinfo=timezone.utc).isoformat()},
+    ).json()
+    job_id = next(job["id"] for job in ticked["jobs"] if job["kind"] == "energyplus-tracking")
+    with client.app.state.Session() as session:
+        result = session.get(Job, job_id).result
+    assert result["mode"] == "typical-year"
+    assert result["weather_kind"] != "amy"
+    assert "not the actual weather" in result["note"]
 
 
 def test_prod_refuses_the_demo_key_and_an_open_dashboard(tmp_path):

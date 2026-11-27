@@ -25,12 +25,13 @@ docker compose down
 
 ## What gets posted
 
-Weekly or monthly JSON, one batch per site. The contract is [docs/data-contract.md](docs/data-contract.md). When a setpoint is missing, the service infers it from sensor samples taken while the equipment ran:
+Weekly or monthly JSON, one batch per site. The contract is [docs/data-contract.md](docs/data-contract.md). When a setpoint is missing, the service infers it from mode-split quantiles:
 
-- supply air temperature, duct static pressure, and water temperatures use a steady-state percentile
-- zone heating and cooling use a deadband percentile on occupied and unoccupied samples
+- heating is the upper quantile of heating-active hours, and cooling is the lower quantile of cooling-active hours
+- a supply-air reset keeps both modes instead of averaging them
+- a mode active for fewer than 8 hours is not emitted, and confidence below 0.6 is dropped
 
-Each stored setpoint is `source=actual` or `source=inferred` and includes a confidence score. Fault periods marked `exclude_from_calibration` are left out of the fit.
+An actual setpoint wins over an inferred one. Fault periods marked `exclude_from_calibration` are left out of the fit. Only a main meter is calibrated, and a period must cover at least 95% of its month.
 
 EnergyPlus calibration compares a full year of monthly electricity (kWh) and gas (therm) with Guideline 14. Monthly limits are CV(RMSE) ≤ 15% and |NMBE| ≤ 5%. Fewer than 12 usable months is `insufficient-data`, not a Guideline 14 result. Hourly Guideline 14 is not claimed. `p` defaults to 1 and is shown with the number of tuned parameters.
 
@@ -48,9 +49,9 @@ docker compose --profile energyplus up --build -d
 
 CI runs two three-day simulations (`pytest -m energyplus`), not the full grid. `make test` skips that marker.
 
-An ROI what-if on a screening model stays in that model, is labeled screening, and is annualized only after 12 usable months. Trimming run hours changes fan energy only. A what-if on an EnergyPlus calibration is queued the same way and reruns the calibrated case, then the case with the measure applied (setpoint change or a shorter occupied window). The savings, payback, NPV, and ensemble band come from those runs.
+An ROI what-if on a screening model stays in that model, is labeled screening, and is annualized only after 12 usable months. Trimming run hours changes fan energy only. A what-if on an EnergyPlus calibration reruns each Guideline 14 passing member as its own baseline and its own altered case. The savings band is the 10th to 90th percentile.
 
-A monthly policy and a weekly tracking policy live on `POST /v1/sites/{site_id}/policies`. `POST /v1/scheduler/tick` enqueues what is due. Two tracking results with CV(RMSE) above 30% enqueue a recalibration. Long runs can be pulled by `python -m twin.runner` with `TWIN_INLINE_JOBS=0`.
+A policy stores its engine. `POST /v1/scheduler/tick` enqueues what is due. EnergyPlus tracking reruns the calibrated case on the nearest typical year (not the actual month's weather). Three of the last six tracking results outside the monthly limits enqueue a recalibration with that same engine. The worker claims a job with a lease (`python -m twin.runner`, `TWIN_INLINE_JOBS=0`). Outbound webhooks are https only, signed as `timestamp.body`.
 
 ## Tests
 

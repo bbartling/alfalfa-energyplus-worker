@@ -2,9 +2,9 @@
 
 import time
 
-from twin.db import Job, make_engine, make_session_factory
+from twin.db import make_engine, make_session_factory
 from twin.scope import bind_tenant, bind_worker
-from twin.service import execute
+from twin.service import claim_next, execute
 from twin.settings import Settings
 
 
@@ -13,10 +13,8 @@ def main() -> None:
     factory = make_session_factory(make_engine(settings.database_url))
     while True:
         with factory() as session:
-            from sqlalchemy import select
-
             bind_worker(session)
-            job = session.scalar(select(Job).where(Job.status == "queued").order_by(Job.created_at))
+            job = claim_next(session)
             if job is not None:
                 bind_tenant(session, job.tenant_id)
                 execute(session, job)

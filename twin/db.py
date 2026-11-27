@@ -57,6 +57,7 @@ class Policy(Base):
     site_id: Mapped[str] = mapped_column(String(80), index=True)
     cadence: Mapped[str] = mapped_column(String(16))
     kind: Mapped[str] = mapped_column(String(32))
+    engine: Mapped[str] = mapped_column(String(40), default="")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     __table_args__ = (UniqueConstraint("tenant_id", "site_id", "cadence", "kind"),)
 
@@ -71,6 +72,8 @@ class Job(Base):
     spec: Mapped[dict] = mapped_column(JSON, default=dict)
     result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    attempts: Mapped[int] = mapped_column(default=0)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
