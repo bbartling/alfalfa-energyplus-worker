@@ -8,7 +8,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from twin.db import Batch, Job, ModelVersion, Policy, Scenario, Site, utcnow
@@ -179,6 +179,53 @@ def create_job(session: Session, site_id: str, kind: str, spec: dict, created_at
     return job
 
 
+def claim_next(session: Session) -> Job | None:
+    """Claim one queued job. Postgres uses SKIP LOCKED. An expired lease is queued again."""
+    now = utcnow()
+    lease = timedelta(minutes=30)
+    for job in session.scalars(
+        select(Job).where(Job.status == "running", Job.lease_until.is_not(None), Job.lease_until < now)
+    ):
+        if (job.attempts or 0) >= 3:
+            job.status = "failed"
+            job.error = "lease expired"
+            job.finished_at = now
+        else:
+            job.status = "queued"
+    session.flush()
+    if session.get_bind().dialect.name == "postgresql":
+        found = session.execute(
+            text(
+                """
+                UPDATE jobs AS chosen
+                SET status = 'running',
+                    attempts = COALESCE(chosen.attempts, 0) + 1,
+                    lease_until = :until
+                WHERE chosen.id = (
+                    SELECT id FROM jobs
+                    WHERE status = 'queued'
+                    ORDER BY created_at
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT 1
+                )
+                RETURNING chosen.id
+                """
+            ),
+            {"until": now + lease},
+        ).scalar()
+        session.commit()
+        return None if found is None else session.get(Job, found)
+    job = session.scalar(select(Job).where(Job.status == "queued").order_by(Job.created_at).limit(1))
+    if job is None:
+        session.commit()
+        return None
+    job.status = "running"
+    job.attempts = (job.attempts or 0) + 1
+    job.lease_until = now + lease
+    session.commit()
+    return job
+
+
 def execute(session: Session, job: Job) -> Job:
     job.status = "running"
     session.commit()
@@ -190,7 +237,7 @@ def execute(session: Session, job: Job) -> Job:
         elif job.kind == "energyplus-scenario":
             row = run_scenario(session, job.site_id, job.spec["name"], job.spec["measures"], job.spec["costs"])
             job.result = {"scenario_id": row.id, **(row.result or {})}
-        elif job.kind == "tracking":
+        elif job.kind in {"tracking", "energyplus-tracking"}:
             job.result = track(session, job.site_id)
         else:
             raise NotReady(f"unsupported job kind {job.kind}")
@@ -200,7 +247,11 @@ def execute(session: Session, job: Job) -> Job:
         job.error = str(exc)[:500]
         job.result = {"error": job.error}
     job.finished_at = utcnow()
+    job.lease_until = None
     session.commit()
+    from twin.webhooks import deliver
+
+    deliver(session, job)
     return job
 
 
@@ -289,7 +340,7 @@ def _payloads(session: Session, site_id: str) -> list[dict]:
 
 def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> dict:
     """Batch EnergyPlus calibration. This is the long job, not the quick estimate."""
-    from twin.eplus import simulate
+    from twin.eplus import idf_artifact, simulate
     from twin.eplus_calibrate import conditions_from_payloads, fit, prototype_match
     from twin.weather import nearest_station
 
@@ -317,6 +368,9 @@ def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> 
     fitted["engine"]["weather_station"] = station["wmo"]
     fitted["engine"]["weather_kind"] = station["weather_kind"]
     fitted["engine"]["weather_note"] = "Nearest-station typical year. Not the actual year of the bills."
+    artifact = idf_artifact(fitted["parameters"], span, weather)
+    fitted["engine"]["idf"] = artifact["idf"]
+    fitted["engine"]["idf_sha256"] = artifact["idf_sha256"]
     return _save_model(
         session,
         site_id,
@@ -334,12 +388,7 @@ def track(session: Session, site_id: str) -> dict:
     if version is None:
         raise NotReady("no active model to track")
     if version.engine.get("name") == "energyplus":
-        return {
-            "model_version_id": version.id,
-            "mode": "stored",
-            "metrics": version.metrics,
-            "note": "EnergyPlus tracking reuses the last calibration until the next batch run.",
-        }
+        return track_energyplus(session, site_id, version)
     months = usable_months(session, site_id)
     window = months[-2:]
     if len(window) < 2:
@@ -432,9 +481,13 @@ def tick(session: Session, now: datetime) -> list[Job]:
     policies = session.scalars(select(Policy).where(Policy.tenant_id == tenant, Policy.enabled.is_(True))).all()
     for policy in policies:
         since = _month_start(now) if policy.cadence == "monthly" else now - timedelta(days=7)
-        if _recent_job(session, policy.site_id, policy.kind, since):
+        engine = policy.engine or active_engine(session, policy.site_id) or "quick-estimate"
+        kind = _job_kind(policy.kind, engine)
+        if _recent_job(session, policy.site_id, kind, since):
             continue
-        created.append(create_job(session, policy.site_id, policy.kind, {"reason": policy.cadence}, created_at=now))
+        created.append(
+            create_job(session, policy.site_id, kind, {"reason": policy.cadence, "engine": engine}, created_at=now)
+        )
     watched = {policy.site_id for policy in policies}
     watched.update(
         session.scalars(
@@ -444,9 +497,11 @@ def tick(session: Session, now: datetime) -> list[Job]:
     for site_id in sorted(watched):
         if not is_drifting(session, site_id):
             continue
-        if _recent_job(session, site_id, "calibration", now - timedelta(days=7)):
+        engine = active_engine(session, site_id) or "quick-estimate"
+        kind = _job_kind("calibration", engine)
+        if _recent_job(session, site_id, kind, now - timedelta(days=7)):
             continue
-        created.append(create_job(session, site_id, "calibration", {"reason": "drift"}, created_at=now))
+        created.append(create_job(session, site_id, kind, {"reason": "drift", "engine": engine}, created_at=now))
     session.commit()
     return created
 
@@ -462,10 +517,10 @@ def is_drifting(session: Session, site_id: str) -> bool:
         )
         .order_by(Job.created_at.desc())
     ).all()
-    recent = list(jobs)[:2]
-    if len(recent) < 2:
+    recent = list(jobs)[:6]
+    if len(recent) < 3:
         return False
-    return all(_cv_above(job, 30) for job in recent)
+    return sum(1 for job in recent if _monthly_off(job)) >= 3
 
 
 def usable_months(session: Session, site_id: str) -> list[dict]:
@@ -540,7 +595,7 @@ def report(session: Session, site_id: str) -> dict:
             "decision": version.engine.get("decision"),
             "parameters": version.parameters,
             "metrics": version.metrics,
-            "engine": version.engine,
+            "engine": {key: value for key, value in version.engine.items() if key != "idf"},
         }
     return {
         "site_id": site.site_id,
@@ -746,9 +801,63 @@ def _recent_job(session: Session, site_id: str, kind: str, since: datetime) -> b
     return False
 
 
-def _cv_above(job: Job, limit: float) -> bool:
+def _job_kind(kind: str, engine: str) -> str:
+    if engine == "energyplus" and kind == "calibration":
+        return "energyplus-calibration"
+    if engine == "energyplus" and kind == "tracking":
+        return "energyplus-tracking"
+    return kind
+
+
+def _monthly_off(job: Job) -> bool:
     metrics = (job.result or {}).get("metrics") or []
-    return any(item.get("cv_rmse_pct", 0) > limit for item in metrics)
+    return any(
+        (item.get("cv_rmse_pct") or 0) > 15 or abs(item.get("nmbe_pct") or 0) > 5
+        for item in metrics
+        if item.get("claim") != "diagnostic"
+    )
+
+
+def track_energyplus(session: Session, site_id: str, version: ModelVersion, run_fn=None) -> dict:
+    """Rerun the calibrated case on the nearest typical year and score the latest months."""
+    from twin.eplus import simulate
+    from twin.eplus_calibrate import MODEL_AREA_M2
+    from twin.weather import nearest_station
+
+    months = usable_months(session, site_id)[-6:]
+    if len(months) < 3:
+        raise NotReady("need at least three usable months to track")
+    site = get_site(session, site_id)
+    station = nearest_station(site.latitude, site.longitude)
+    weather = station["file"]
+    if run_fn is None:
+
+        def run_fn(case, span):
+            return simulate(case, weather, span)
+
+    raw = run_fn(version.parameters, "year")
+    scale = site.floor_area_m2 / MODEL_AREA_M2
+    measured, simulated = [], []
+    for month in months:
+        number = int(str(month["start"])[5:7])
+        series = raw.get("electric") or {}
+        if number not in series:
+            continue
+        measured.append(month["electric_kwh"])
+        simulated.append(series[number] * scale)
+    if len(measured) < 3:
+        raise NotReady("the typical-year run did not cover the tracked months")
+    stats = assess(measured, simulated, "monthly")
+    stats["claim"] = "tracking"
+    stats["pass"] = None
+    return {
+        "model_version_id": version.id,
+        "mode": "typical-year",
+        "metrics": [{"split": "tracking", "fuel": "electricity", **stats}],
+        "note": "Tracked on the nearest typical year, not the actual weather of these months.",
+        "weather": weather,
+        "weather_kind": station["weather_kind"],
+    }
 
 
 def active_version(session: Session, site_id: str) -> ModelVersion | None:

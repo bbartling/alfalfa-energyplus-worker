@@ -27,6 +27,8 @@ Timestamps in batches are RFC 3339 UTC. Schedule clocks are local standard time 
 
 `POST /v1/sites/{site_id}/operations` or `POST /v1/hooks/operations` (same JSON, for a single webhook URL).
 
+Outbound webhooks are https only. The host is resolved at registration and again at delivery, and a private, loopback, or link-local address is rejected. The secret in the request is not stored. The response includes a random signing key, and each delivery is signed as `timestamp.body` with retry and backoff.
+
 `batch_id` is the idempotency key. The same body returns `"duplicate": true` and does not write again. A different body with the same id is `409`.
 
 ```json

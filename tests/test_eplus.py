@@ -204,9 +204,20 @@ def test_what_if_reruns_the_calibrated_energyplus_case():
     assert calls[1][0] == 25
     assert priced["annual_kwh_savings"] == pytest.approx(30 * 12)
     assert priced["engine"] == "energyplus"
-    assert priced["runs"] == 3
+    assert priced["runs"] == 4
+    assert priced["cost_savings_band_usd"][0] == pytest.approx(priced["cost_savings_band_usd"][1])
     trimmed = apply_measures(case, [{"name": "trim_run_hours", "fraction": 0.2}])
     assert trimmed["occupied_end"] == "16:00"
+
+
+def test_the_calibrated_idf_hash_is_stable():
+    from twin.eplus import idf_artifact
+
+    first = idf_artifact(base_case(), "smoke")
+    second = idf_artifact(base_case(), "smoke")
+    assert first["idf_sha256"] == second["idf_sha256"]
+    assert len(first["idf_sha256"]) == 64
+    assert "idf" in first and first["idf"]
 
 
 def test_weather_file_follows_latitude():

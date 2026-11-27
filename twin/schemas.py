@@ -241,6 +241,7 @@ class OperationsBatch(StrictModel):
 class PolicyIn(StrictModel):
     cadence: Literal["weekly", "monthly"]
     kind: Literal["calibration", "tracking"]
+    engine: Literal["quick-estimate", "energyplus"] | None = None
 
 
 class Measure(StrictModel):

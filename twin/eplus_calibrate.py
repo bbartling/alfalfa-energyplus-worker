@@ -137,10 +137,15 @@ def fit(base: dict, months: list[dict], area: float, run_fn, span: str = "year")
     metrics = _metrics(raw, months, scale, "all", claim=claim, tuned=tuned)
     metrics.extend(_loocv(raw, months, scale, tuned))
     promoted = claim == "guideline14" and _passes(metrics, "all")
+    passing = []
+    for candidate, _candidate_score, candidate_raw in ranked:
+        rows = _metrics(candidate_raw, months, scale, "all", claim=claim, tuned=tuned)
+        if claim == "guideline14" and _passes(rows, "all"):
+            passing.append(candidate)
     return {
         "decision": "promoted" if promoted else ("insufficient-data" if claim == "insufficient-data" else "rejected"),
         "parameters": best,
-        "ensemble": [item[0] for item in ranked[:5]],
+        "ensemble": passing or [best],
         "metrics": metrics,
         "runs": len(ranked),
         "engine": {
@@ -155,6 +160,9 @@ def fit(base: dict, months: list[dict], area: float, run_fn, span: str = "year")
             "n_tuned_parameters": tuned,
             "p": 1,
             "claim": claim,
+            "idf_sha256": raw.get("idf_sha256"),
+            "epw_sha256": raw.get("epw_sha256"),
+            "energyplus_version": raw.get("energyplus_version"),
             "span": span,
         },
     }
@@ -180,22 +188,29 @@ def apply_measures(case: dict, measures: list[dict]) -> dict:
 
 
 def price_energyplus(case: dict, measures: list[dict], costs: dict, area: float, run_fn, ensemble: list[dict] | None = None) -> dict:
-    """Price a what-if with batch EnergyPlus runs of the calibrated model."""
+    """Price a what-if from each passing member's own baseline and altered run."""
     scale = area / MODEL_AREA_M2
-    baseline = run_fn(case, "year")
-    altered = run_fn(apply_measures(case, measures), "year")
-    save_kwh, save_therms = _annual_delta(baseline, altered, scale)
-    usd = _dollars(save_kwh, save_therms, costs)
-    band = [usd]
-    runs = 2
-    promoted = _identity(case)
-    for other in ensemble or []:
-        if _identity(other) == promoted or len(band) >= 3:
+    members = []
+    seen = set()
+    for member in [case, *(ensemble or [])]:
+        identity = _identity(member)
+        if identity in seen:
             continue
-        other_alt = run_fn(apply_measures(other, measures), "year")
-        runs += 1
-        other_kwh, other_therms = _annual_delta(baseline, other_alt, scale)
-        band.append(_dollars(other_kwh, other_therms, costs))
+        seen.add(identity)
+        members.append(member)
+    dollars = []
+    headline = None
+    runs = 0
+    for member in members:
+        baseline = run_fn(member, "year")
+        altered = run_fn(apply_measures(member, measures), "year")
+        runs += 2
+        save_kwh, save_therms = _annual_delta(baseline, altered, scale)
+        usd = _dollars(save_kwh, save_therms, costs)
+        dollars.append(usd)
+        if headline is None:
+            headline = (save_kwh, save_therms, usd)
+    save_kwh, save_therms, usd = headline
     payback = None if usd <= 0 else costs["implementation_usd"] / usd
     return {
         "annual_kwh_savings": save_kwh,
@@ -203,11 +218,22 @@ def price_energyplus(case: dict, measures: list[dict], costs: dict, area: float,
         "annual_cost_savings_usd": usd,
         "simple_payback_years": payback,
         "npv_usd": _npv(costs["implementation_usd"], usd, costs["discount_rate"], costs["horizon_years"]),
-        "cost_savings_band_usd": [min(band), max(band)],
+        "cost_savings_band_usd": [_percentile(dollars, 0.1), _percentile(dollars, 0.9)],
         "engine": "energyplus",
         "label": "EnergyPlus",
         "runs": runs,
     }
+
+
+def _percentile(values: list[float], fraction: float) -> float:
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = fraction * (len(ordered) - 1)
+    low = int(position)
+    high = min(low + 1, len(ordered) - 1)
+    weight = position - low
+    return ordered[low] * (1 - weight) + ordered[high] * weight
 
 
 def _annual_delta(baseline: dict, altered: dict, scale: float) -> tuple[float, float]:

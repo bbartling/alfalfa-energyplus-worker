@@ -6,9 +6,11 @@ Everywhere else, including CI, the same command runs inside that image.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import sqlite3
 import subprocess
+from functools import lru_cache
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -36,7 +38,39 @@ def simulate(case: dict, weather: str, span: str, timeout: int = 3600) -> dict:
         (root / "in.idf").write_text(idf)
         (root / "out").mkdir()
         _execute(root, weather, timeout)
-        return monthly_energy(root / "out" / "eplusout.sql")
+        totals = monthly_energy(root / "out" / "eplusout.sql")
+    totals["idf_sha256"] = hashlib.sha256(idf.encode()).hexdigest()
+    totals["epw_sha256"] = epw_sha256(weather)
+    totals["energyplus_version"] = energyplus_version()
+    return totals
+
+
+def idf_artifact(case: dict, span: str, weather: str | None = None) -> dict:
+    """The calibrated IDF and its sha256. The file is not written to the repository."""
+    station = station_by_file(weather) if weather else None
+    idf = apply_case(load_model(), case, span, station=station)
+    return {"idf": idf, "idf_sha256": hashlib.sha256(idf.encode()).hexdigest()}
+
+
+@lru_cache(maxsize=8)
+def epw_sha256(weather: str) -> str | None:
+    weather_dir = os.environ.get("ENERGYPLUS_WEATHER_DIR", WEATHER_DIR)
+    path = Path(weather_dir) / weather
+    if path.is_file():
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    local_bin = os.environ.get("ENERGYPLUS_BIN", "")
+    if local_bin and Path(local_bin).exists():
+        return None
+    return _docker_output(["sha256sum", f"{WEATHER_DIR}/{weather}"]).split()[0]
+
+
+@lru_cache(maxsize=1)
+def energyplus_version() -> str | None:
+    local_bin = os.environ.get("ENERGYPLUS_BIN", "")
+    command = [local_bin, "--version"] if local_bin and Path(local_bin).exists() else None
+    text = _docker_output([ENERGYPLUS_BIN, "--version"]) if command is None else _local_output(command)
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return lines[-1] if lines else None
 
 
 def monthly_energy(path: Path) -> dict:
@@ -113,6 +147,22 @@ def _execute(root: Path, weather: str, timeout: int) -> None:
     if completed.returncode != 0:
         err = _tail(root / "out" / "eplusout.err") or completed.stderr[-1500:] or completed.stdout[-1500:]
         raise RuntimeError(f"EnergyPlus failed: {err}")
+
+
+def _docker_output(args: list[str]) -> str:
+    completed = subprocess.run(
+        ["docker", "run", "--rm", IMAGE, *args], check=False, capture_output=True, text=True, timeout=180
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr[-500:] or completed.stdout[-500:])
+    return completed.stdout
+
+
+def _local_output(command: list[str]) -> str:
+    completed = subprocess.run(command, check=False, capture_output=True, text=True, timeout=60)
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr[-500:] or completed.stdout[-500:])
+    return completed.stdout or completed.stderr
 
 
 def _tail(path: Path) -> str:
