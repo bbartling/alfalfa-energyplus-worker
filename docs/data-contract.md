@@ -21,7 +21,7 @@ MQTT is not used. The same JSON could be a message, but a weekly or monthly POST
 }
 ```
 
-Timestamps in batches are RFC 3339 UTC. Schedule clocks are local standard time (`HH:MM`, no daylight-saving shift). The service can convert an instant to that clock with the site's IANA timezone. The EnergyPlus file does not also enable `RunPeriodControl:DaylightSavingTime`, so a summer hour is not shifted a second time. Weekday and weekend profiles follow `Schedule:Week:Daily` (and `hour_of_week` when the summary includes it), not the day-schedule name. Design-day schedules are left as generated.
+Timestamps in batches are RFC 3339 UTC. Schedule clocks are local standard time (`HH:MM`, no daylight-saving shift). The service can convert an instant to that clock with the site's IANA timezone. The EnergyPlus file does not also enable `RunPeriodControl:DaylightSavingTime`, so a summer hour is not shifted a second time. Weekday and weekend profiles follow `Schedule:Week:Daily` (and `hour_of_week` when the summary includes it), not the day-schedule name. Design-day schedules are left as generated until a weather station is selected. EnergyPlus then uses the nearest station in the OpenStudio standards set. That file is a typical year (TMY3, CWEC, or CZ2010), not the actual year of the bills. The run records the station id and `weather_kind`. Site location and the heating and cooling design days are replaced with that station's. The monthly HDD and CDD in the summary still drive the screening model.
 
 ## Operations batch
 

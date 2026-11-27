@@ -271,15 +271,17 @@ def _payloads(session: Session, site_id: str) -> list[dict]:
 
 def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> dict:
     """Batch EnergyPlus calibration. This is the long job, not the quick estimate."""
-    from twin.eplus import simulate, weather_file
+    from twin.eplus import simulate
     from twin.eplus_calibrate import conditions_from_payloads, fit
+    from twin.weather import nearest_station
 
     site = get_site(session, site_id)
     if site is None:
         raise NotReady("unknown site")
     months = usable_months(session, site_id)
     payloads = _payloads(session, site_id)
-    weather = weather_file(site.latitude)
+    station = nearest_station(site.latitude, site.longitude)
+    weather = station["file"]
 
     def run_fn(case: dict, run_span: str) -> dict:
         return simulate(case, weather, run_span)
@@ -289,6 +291,9 @@ def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> 
     except ValueError as exc:
         raise NotReady(str(exc)) from exc
     fitted["engine"]["weather"] = weather
+    fitted["engine"]["weather_station"] = station["wmo"]
+    fitted["engine"]["weather_kind"] = station["weather_kind"]
+    fitted["engine"]["weather_note"] = "Nearest-station typical year. Not the actual year of the bills."
     return _save_model(
         session,
         site_id,
@@ -383,7 +388,7 @@ def _price_energyplus(session: Session, site_id: str, version: ModelVersion, mea
     from twin.eplus_calibrate import price_energyplus
 
     site = get_site(session, site_id)
-    weather = weather_file(site.latitude)
+    weather = weather_file(site.latitude, site.longitude)
 
     def run_fn(case: dict, span: str) -> dict:
         return simulate(case, weather, span)

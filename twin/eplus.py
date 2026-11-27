@@ -14,6 +14,7 @@ from tempfile import TemporaryDirectory
 
 from twin.eplus_meters import JOULES_PER_KWH
 from twin.idfedit import apply_case, load_model
+from twin.weather import nearest_station, station_by_file
 
 IMAGE = os.environ.get("TWIN_OPENSTUDIO_IMAGE", "nrel/openstudio:3.9.0")
 ENERGYPLUS_BIN = "/usr/local/openstudio-3.9.0/EnergyPlus/energyplus"
@@ -22,23 +23,14 @@ WEATHER_DIR = (
 )
 JOULES_PER_THERM = 105_480_400
 
-WEATHER_FILES = (
-    (40.0, "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"),
-    (32.0, "USA_MD_Baltimore-Washington.Intl.AP.724060_TMY3.epw"),
-    (-90.0, "USA_FL_Miami.Intl.AP.722020_TMY3.epw"),
-)
-
-
-def weather_file(latitude: float) -> str:
-    for threshold, name in WEATHER_FILES:
-        if latitude >= threshold:
-            return name
-    return WEATHER_FILES[-1][1]
+def weather_file(latitude: float, longitude: float) -> str:
+    """Nearest station file. It is a TMY (or CWEC/CZ2010), not actual-year weather."""
+    return nearest_station(latitude, longitude)["file"]
 
 
 def simulate(case: dict, weather: str, span: str, timeout: int = 3600) -> dict:
     """Run one IDF and return monthly electricity (kWh) and gas (therm)."""
-    idf = apply_case(load_model(), case, span)
+    idf = apply_case(load_model(), case, span, station=station_by_file(weather))
     with TemporaryDirectory(prefix="twin-eplus-") as work:
         root = Path(work)
         (root / "in.idf").write_text(idf)
