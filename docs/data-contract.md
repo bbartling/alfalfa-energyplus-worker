@@ -72,7 +72,7 @@ Sensors are quantile summaries, not sample arrays: `{n, hours, p05, p10, p25, p5
 
 An `source=actual` value for a kind wins over an inferred value for every period, including `always`. Request bodies larger than 1 MB are rejected.
 
-Meters are monthly totals, with optional daily or hourly rows. If a monthly row is present it is the total; otherwise finer rows are summed. Electricity is kWh. Gas is accepted as therm, kWh, or m³ and stored as therm. Weather is a period summary (mean dry-bulb, HDD and CDD base 18 °C) plus the site location from registration.
+Meters are monthly totals. `role` is `main` or `sub`; only a main meter is used for calibration, so a main meter plus RTU submeters are not added together. A period shorter than 95% of its calendar month, or a main meter that covers less than 95% of the period, is stored but excluded. A period that overlaps one already stored is rejected. Electricity is kWh. Gas is accepted as therm, kWh, or m³ and stored as therm. Weather is a period summary (mean dry-bulb, HDD and CDD base 18 °C) plus the site location from registration. Hourly Guideline 14 is not claimed.
 
 `GET /v1/sites/{site_id}/coverage?start=&end=` lists missing months.
 

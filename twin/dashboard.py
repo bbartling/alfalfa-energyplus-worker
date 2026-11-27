@@ -58,12 +58,20 @@ def site_page(report: dict) -> str:
     return _page(report["site_id"], body)
 
 
+def _sample_label(item: dict) -> str:
+    if item.get("n_tuned_parameters") is None:
+        return str(item["n"])
+    return f"{item['n']} · p={item.get('p')} · tuned={item['n_tuned_parameters']}"
+
+
 def _calibration_heading(calibration: dict | None) -> str:
     if calibration is None:
         return "Calibration"
     engine = calibration.get("engine") or {}
-    if engine.get("name") == "energyplus" and engine.get("claim") != "screening":
+    if engine.get("name") == "energyplus" and engine.get("claim") == "guideline14":
         return "Guideline 14"
+    if engine.get("claim") == "insufficient-data":
+        return "Insufficient data"
     return "Screening estimate"
 
 
@@ -85,7 +93,7 @@ def _metric_table(metrics: list[dict]) -> str:
                 split=escape(str(item["split"])),
                 fuel=escape(str(item["fuel"])),
                 grain=escape(str(item["granularity"])),
-                n=item["n"],
+                n=_sample_label(item),
                 cv=item["cv_rmse_pct"],
                 nmbe=item["nmbe_pct"],
                 limits=limit_text,
@@ -97,6 +105,7 @@ def _metric_table(metrics: list[dict]) -> str:
         "<table><thead><tr><th>Split</th><th>Fuel</th><th></th><th>n</th>"
         "<th>CV(RMSE)</th><th>NMBE</th><th>Limits</th><th></th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
+        "<p class='muted'>NMBE is positive when measured energy is above the model.</p>"
     )
 
 

@@ -124,6 +124,13 @@ def store_batch(session: Session, batch: OperationsBatch) -> dict:
             Batch.batch_id == str(batch.batch_id),
         )
     )
+    for prior in session.scalars(
+        select(Batch).where(Batch.tenant_id == current_tenant(session), Batch.site_id == batch.site_id)
+    ):
+        if prior.batch_id == str(batch.batch_id):
+            continue
+        if _overlaps(prior.period_start, prior.period_end, batch.period.start, batch.period.end):
+            raise Conflict("period overlaps a summary that is already stored")
     if existing is not None:
         if existing.body_hash != digest:
             raise Conflict("batch_id was already stored with a different body")
@@ -144,10 +151,7 @@ def store_batch(session: Session, batch: OperationsBatch) -> dict:
 
 
 def coverage(session: Session, site_id: str, start: datetime, end: datetime) -> dict:
-    rows = session.scalars(
-        select(Batch).where(Batch.tenant_id == current_tenant(session), Batch.site_id == site_id)
-    ).all()
-    present = sorted({row.period_start[:7] for row in rows})
+    present = sorted({month["start"][:7] for month in usable_months(session, site_id)})
     missing = []
     cursor = datetime(start.year, start.month, 1, tzinfo=timezone.utc)
     stop = datetime(end.year, end.month, 1, tzinfo=timezone.utc)
@@ -482,6 +486,7 @@ def month_from_payload(payload: dict) -> dict:
     start = _parse_time(payload["period"]["start"])
     end = _parse_time(payload["period"]["end"])
     days = max(1.0, (end - start).total_seconds() / 86400)
+    covered = _meter_coverage(payload.get("meters") or [], start, end)
     occupied = _occupied_hours(payload.get("schedules") or [], days)
     equipment = payload.get("run_hours") or []
     run_hours = sum(item["hours"] for item in equipment) / len(equipment) if equipment else 0.0
@@ -504,7 +509,9 @@ def month_from_payload(payload: dict) -> dict:
         "hdd": weather["hdd_base_18c"],
         "electric_kwh": _meter_total(payload.get("meters") or [], "electricity"),
         "gas_therms": _meter_total(payload.get("meters") or [], "natural_gas"),
-        "exclude": any(item.get("exclude_from_calibration") for item in payload.get("faults") or []),
+        "exclude": any(item.get("exclude_from_calibration") for item in payload.get("faults") or [])
+        or days < 0.95 * _days_in_month(start)
+        or covered < 0.95,
     }
 
 
@@ -635,8 +642,36 @@ def _split_passes(metrics: list[dict], split: str) -> bool:
     return bool(rows) and all(item["pass"] for item in rows)
 
 
+def _days_in_month(start: datetime) -> float:
+    nxt = _add_month(start)
+    return (nxt - datetime(start.year, start.month, 1, tzinfo=timezone.utc)).total_seconds() / 86400
+
+
+def _meter_coverage(meters: list[dict], start: datetime, end: datetime) -> float:
+    span = (end - start).total_seconds()
+    if span <= 0:
+        return 0.0
+    best = 0.0
+    for meter in meters:
+        if meter.get("role", "main") != "main" or meter.get("fuel") != "electricity":
+            continue
+        if "start" not in meter or "end" not in meter:
+            best = 1.0
+            continue
+        left = max(_parse_time(meter["start"]), start)
+        right = min(_parse_time(meter["end"]), end)
+        best = max(best, max(0.0, (right - left).total_seconds()) / span)
+    return best
+
+
+def _overlaps(a_start, a_end, b_start, b_end) -> bool:
+    a0, a1 = _parse_time(a_start), _parse_time(a_end)
+    b0, b1 = _parse_time(b_start), _parse_time(b_end)
+    return a0 < b1 and b0 < a1
+
+
 def _meter_total(meters: list[dict], fuel: str) -> float | None:
-    chosen = [item for item in meters if item["fuel"] == fuel]
+    chosen = [item for item in meters if item["fuel"] == fuel and item.get("role", "main") == "main"]
     monthly = [item for item in chosen if item["granularity"] == "month"]
     use = monthly or chosen
     if not use:

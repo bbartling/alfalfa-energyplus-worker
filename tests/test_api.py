@@ -262,6 +262,71 @@ def test_webhook_events_stay_inside_the_tenant(client, auth, monkeypatch):
     assert seen == ["http://tenant-a.example/hook"]
 
 
+def test_a_submeter_a_short_period_and_an_overlap_do_not_enter_calibration(client, auth):
+    spec = dict(SITES[0])
+    client.post("/v1/sites", json=site_record(spec), headers=auth)
+    start = "2024-01-01T00:00:00+00:00"
+    end = "2024-02-01T00:00:00+00:00"
+    week_start = "2024-02-01T00:00:00+00:00"
+    week_end = "2024-02-08T00:00:00+00:00"
+
+    def batch(batch_id, period_end, meters):
+        return {
+            "schema_version": "1.0",
+            "batch_id": batch_id,
+            "site_id": spec["site_id"],
+            "generated_at": "2024-02-02T00:00:00+00:00",
+            "period": {"start": start, "end": period_end, "label": "month"},
+            "meters": meters,
+            "weather": {"source": "test", "drybulb_mean_c": 0, "hdd_base_18c": 10, "cdd_base_18c": 0},
+        }
+
+    full = [
+        {"meter_id": "elec-main", "fuel": "electricity", "unit": "kWh", "start": start, "end": end, "value": 100, "role": "main"},
+        {"meter_id": "rtu", "fuel": "electricity", "unit": "kWh", "start": start, "end": end, "value": 900, "role": "sub"},
+    ]
+    assert client.post(f"/v1/sites/{spec['site_id']}/operations", json=batch("00000000-0000-0000-0000-0000000000a1", end, full), headers=auth).status_code == 200
+    short = [
+        {"meter_id": "elec-main", "fuel": "electricity", "unit": "kWh", "start": week_start, "end": week_end, "value": 20, "role": "main"},
+    ]
+    week = batch("00000000-0000-0000-0000-0000000000a2", week_end, short)
+    week["period"] = {"start": week_start, "end": week_end, "label": "week"}
+    assert client.post(f"/v1/sites/{spec['site_id']}/operations", json=week, headers=auth).status_code == 200
+    overlap = client.post(
+        f"/v1/sites/{spec['site_id']}/operations",
+        json=batch("00000000-0000-0000-0000-0000000000a3", end, full),
+        headers=auth,
+    )
+    assert overlap.status_code == 409
+    report = client.get(f"/v1/sites/{spec['site_id']}/report", headers=auth).json()
+    assert report["months_received"] == 2
+    from twin.scope import bind_tenant
+    from twin.service import usable_months
+
+    with client.app.state.Session() as session:
+        bind_tenant(session, "local")
+        months = usable_months(session, spec["site_id"])
+    assert [item["electric_kwh"] for item in months] == [100.0]
+    present = client.get(
+        f"/v1/sites/{spec['site_id']}/coverage",
+        params={"start": "2024-01-01T00:00:00+00:00", "end": "2024-03-01T00:00:00+00:00"},
+        headers=auth,
+    ).json()
+    assert present["months_present"] == ["2024-01"]
+    assert "2024-02" in present["months_missing"]
+
+
+def test_energyplus_refuses_an_office_outside_the_area_band(client, auth):
+    spec = dict(SITES[0])
+    spec["floor_area_m2"] = 100
+    spec["stories"] = 1
+    client.post("/v1/sites", json=site_record(spec) | {"stories": 1, "system_type": "psz-ac", "heating_fuel": "heat_pump"}, headers=auth)
+    for batch in batches_for(spec, include_incremental=False)[:4]:
+        assert client.post(f"/v1/sites/{spec['site_id']}/operations", json=batch, headers=auth).status_code == 200
+    response = client.post(f"/v1/sites/{spec['site_id']}/calibrations?engine=energyplus", headers=auth)
+    assert response.status_code == 422
+
+
 def test_prod_refuses_the_demo_key_and_an_open_dashboard(tmp_path):
     from twin.factory import create_app
     from twin.settings import Settings

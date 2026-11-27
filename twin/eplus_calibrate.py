@@ -114,7 +114,6 @@ def fit(base: dict, months: list[dict], area: float, run_fn, span: str = "year")
     if len(months) < 4:
         raise ValueError("need at least four usable months to calibrate")
     scale = area / MODEL_AREA_M2
-    train, holdout = months[:-2], months[-2:]
     ranked: list[tuple[dict, float, dict]] = []
     seen: set[tuple] = set()
 
@@ -124,7 +123,7 @@ def fit(base: dict, months: list[dict], area: float, run_fn, span: str = "year")
             return
         seen.add(identity)
         raw = run_fn(case, span)
-        ranked.append((case, _score(raw, train, scale), raw))
+        ranked.append((case, _score(raw, months, scale), raw))
 
     for case in coarse_cases(base):
         evaluate(case)
@@ -133,10 +132,13 @@ def fit(base: dict, months: list[dict], area: float, run_fn, span: str = "year")
         evaluate(case)
     ranked.sort(key=lambda item: item[1])
     best, _score_value, raw = ranked[0]
-    metrics = _metrics(raw, train, scale, "train") + _metrics(raw, holdout, scale, "holdout")
-    promoted = _passes(metrics, "train") and _passes(metrics, "holdout")
+    tuned = len(sweep_keys(best))
+    claim = "guideline14" if len(months) >= 12 else "insufficient-data"
+    metrics = _metrics(raw, months, scale, "all", claim=claim, tuned=tuned)
+    metrics.extend(_loocv(raw, months, scale, tuned))
+    promoted = claim == "guideline14" and _passes(metrics, "all")
     return {
-        "decision": "promoted" if promoted else "rejected",
+        "decision": "promoted" if promoted else ("insufficient-data" if claim == "insufficient-data" else "rejected"),
         "parameters": best,
         "ensemble": [item[0] for item in ranked[:5]],
         "metrics": metrics,
@@ -149,7 +151,10 @@ def fit(base: dict, months: list[dict], area: float, run_fn, span: str = "year")
             "model": MODEL_NAME,
             "prototype_floor_area_m2": MODEL_AREA_M2,
             "area_scale": scale,
-            "decision": "promoted" if promoted else "rejected",
+            "decision": "promoted" if promoted else ("insufficient-data" if claim == "insufficient-data" else "rejected"),
+            "n_tuned_parameters": tuned,
+            "p": 1,
+            "claim": claim,
             "span": span,
         },
     }
@@ -252,7 +257,32 @@ def _score(raw: dict, months: list[dict], scale: float) -> float:
     return total
 
 
-def _metrics(raw: dict, months: list[dict], scale: float, split: str) -> list[dict]:
+def _loocv(raw: dict, months: list[dict], scale: float, tuned: int) -> list[dict]:
+    """Leave each month out of the score. Parameters are not refit. Diagnostic only."""
+    if len(months) < 4:
+        return []
+    electric = []
+    for index in range(len(months)):
+        sample = months[:index] + months[index + 1 :]
+        electric.append(_metrics(raw, sample, scale, "loocv", claim="diagnostic", tuned=tuned)[0]["cv_rmse_pct"])
+    return [
+        {
+            "split": "loocv",
+            "fuel": "electricity",
+            "n": len(months),
+            "p": 1,
+            "n_tuned_parameters": tuned,
+            "cv_rmse_pct": max(electric),
+            "nmbe_pct": 0.0,
+            "granularity": "monthly",
+            "limits": None,
+            "pass": None,
+            "claim": "diagnostic",
+        }
+    ]
+
+
+def _metrics(raw: dict, months: list[dict], scale: float, split: str, claim: str | None = None, tuned: int = 1) -> list[dict]:
     electric_m, electric_s, gas_m, gas_s = [], [], [], []
     for month in months:
         number = _month_number(month["start"])
@@ -261,14 +291,19 @@ def _metrics(raw: dict, months: list[dict], scale: float, split: str) -> list[di
         if month.get("gas_therms") is not None and number in raw.get("gas", {}):
             gas_m.append(month["gas_therms"])
             gas_s.append(raw["gas"][number] * scale)
-    rows = [_row(split, "electricity", electric_m, electric_s)]
+    rows = [_row(split, "electricity", electric_m, electric_s, claim, tuned)]
     if len(gas_m) >= 2:
-        rows.append(_row(split, "natural_gas", gas_m, gas_s))
+        rows.append(_row(split, "natural_gas", gas_m, gas_s, claim, tuned))
     return rows
 
 
-def _row(split: str, fuel: str, measured: list[float], simulated: list[float]) -> dict:
+def _row(split: str, fuel: str, measured: list[float], simulated: list[float], claim: str | None, tuned: int) -> dict:
     stats = assess(measured, simulated, "monthly")
+    stats["n_tuned_parameters"] = tuned
+    if claim and claim != "guideline14":
+        stats["claim"] = claim
+        stats["pass"] = None
+        stats["limits"] = None
     return {"split": split, "fuel": fuel, **stats}
 
 
@@ -300,8 +335,11 @@ def _half_step(values: tuple[float, ...]) -> float:
 
 def prototype_match(site) -> str | None:
     """422 detail when this site cannot use the checked-in small-office RTU."""
+    stories = site.stories or 1
     if site.building_type != "small-office" or site.system_type != "psz-ac":
         return "EnergyPlus v1 is a small-office packaged RTU (psz-ac)"
+    if not 250 <= site.floor_area_m2 <= 2500 or not 1 <= stories <= 2:
+        return "EnergyPlus v1 covers small offices of 250 to 2,500 m² and one or two storeys"
     if site.heating_fuel not in {"gas", "electric", "heat_pump"}:
         return "heating_fuel must be gas, electric, or heat_pump"
     return None
