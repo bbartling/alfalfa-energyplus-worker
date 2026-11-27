@@ -40,7 +40,7 @@ def site_page(report: dict) -> str:
         cal = (
             f"<p>Decision <span class='pill {'ok' if calibration['decision']=='promoted' else 'bad'}'>"
             f"{escape(str(calibration['decision']))}</span></p>"
-            f"<p class='muted'>Engine: {escape(calibration['engine'].get('name', ''))}</p>"
+            f"<p class='muted'>Engine: {escape(calibration['engine'].get('label') or calibration['engine'].get('name', ''))}</p>"
             + _metric_table(calibration["metrics"])
             + _param_list(calibration["parameters"])
         )

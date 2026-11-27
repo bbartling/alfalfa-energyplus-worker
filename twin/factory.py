@@ -169,13 +169,27 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"jobs": [{"id": job.id, "site_id": job.site_id, "kind": job.kind, "status": job.status, "spec": job.spec} for job in jobs]}
 
     @app.post("/v1/sites/{site_id}/calibrations")
-    def calibrate(site_id: str, key: ApiKey = Depends(principal), session: Session = Depends(db)):
+    def calibrate(
+        site_id: str,
+        engine: str = "quick-estimate",
+        key: ApiKey = Depends(principal),
+        session: Session = Depends(db),
+    ):
         allow(site_id, key)
-        job = create_job(session, site_id, "calibration", {"reason": "manual"})
-        session.commit()
-        if settings.inline_jobs:
-            execute(session, job)
-            _notify(session, job)
+        if engine not in {"quick-estimate", "energyplus"}:
+            raise APIError(422, "engine must be quick-estimate or energyplus")
+        if engine == "energyplus":
+            job = create_job(session, site_id, "energyplus-calibration", {"reason": "manual", "engine": engine, "span": "year"})
+            session.commit()
+            if settings.inline_jobs and settings.energyplus_inline:
+                execute(session, job)
+                _notify(session, job)
+        else:
+            job = create_job(session, site_id, "calibration", {"reason": "manual", "engine": "quick-estimate"})
+            session.commit()
+            if settings.inline_jobs:
+                execute(session, job)
+                _notify(session, job)
         return JSONResponse(status_code=200 if job.status == "completed" else 202, content=_job_body(job))
 
     @app.get("/v1/jobs/{job_id}")

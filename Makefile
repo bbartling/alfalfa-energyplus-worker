@@ -1,4 +1,4 @@
-.PHONY: test lint alfalfa-config alfalfa quickstart
+.PHONY: test lint alfalfa-config alfalfa quickstart energyplus-smoke
 
 test:
 	pytest
@@ -16,3 +16,6 @@ alfalfa:
 quickstart:
 	docker compose --profile demo up --build -d
 	@echo "Dashboard: http://127.0.0.1:$${TWIN_HTTP_PORT:-18080}"
+
+energyplus-smoke:
+	pytest -o addopts='-q -m energyplus'

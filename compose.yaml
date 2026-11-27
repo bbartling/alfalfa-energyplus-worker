@@ -44,5 +44,17 @@ services:
       api:
         condition: service_healthy
     restart: "no"
+  worker:
+    profiles: [energyplus]
+    build:
+      dockerfile: Dockerfile.worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://twin:twin@db:5432/twin
+      ENERGYPLUS_BIN: /usr/local/openstudio-3.9.0/EnergyPlus/energyplus
+      ENERGYPLUS_WEATHER_DIR: /var/oscli/gems/ruby/3.2.0/gems/openstudio-standards-0.7.0/data/weather
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
 volumes:
   twin-db:

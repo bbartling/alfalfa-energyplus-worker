@@ -9,6 +9,7 @@ class Settings:
     dashboard_open: bool
     inline_jobs: bool
     alfalfa_url: str | None
+    energyplus_inline: bool = False
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -19,4 +20,5 @@ class Settings:
             dashboard_open=os.getenv("TWIN_DASHBOARD_OPEN", "0") == "1",
             inline_jobs=os.getenv("TWIN_INLINE_JOBS", "1") == "1",
             alfalfa_url=alfalfa,
+            energyplus_inline=os.getenv("TWIN_ENERGYPLUS_INLINE", "0") == "1",
         )
