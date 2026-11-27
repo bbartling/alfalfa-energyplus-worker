@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from twin.db import Batch, Job, ModelVersion, Policy, Scenario, Site, utcnow
 from twin.energy import Params, fit, leave_one_out, predict
 from twin.guideline14 import assess
-from twin.infer import infer_steady, infer_zone
+from twin.infer import CONFIDENCE_FLOOR, Inferred, infer_quantile, infer_reset
 from twin.schemas import UNITS, OperationsBatch
 from twin.scope import current_tenant, get_site
 
@@ -58,27 +58,40 @@ def sign_body(secret: str, body: bytes) -> str:
 def apply_inference(batch: OperationsBatch) -> OperationsBatch:
     data = batch.model_dump(mode="json")
     existing = {(item.equipment_id, item.kind, item.period) for item in batch.setpoints}
+    actual_kinds = {(item.equipment_id, item.kind) for item in batch.setpoints if item.source == "actual"}
     for sensor in batch.sensors:
         if sensor.kind == "zone_temp":
-            pairs = (
-                ("occupied", sensor.occupied_samples, False),
-                ("unoccupied", sensor.unoccupied_samples, True),
-            )
-            for period, samples, unoccupied in pairs:
-                if len(samples) < 8:
-                    continue
-                heating, cooling = infer_zone(samples, unoccupied=unoccupied)
-                for kind, inferred in (("zone_heating", heating), ("zone_cooling", cooling)):
-                    _add_setpoint(data, existing, sensor.equipment_id, kind, period, inferred)
-        elif len(sensor.samples_while_running) >= 8:
-            inferred = infer_steady(sensor.samples_while_running)
-            _add_setpoint(
-                data, existing, sensor.equipment_id, SENSOR_KIND[sensor.kind], "always", inferred
-            )
+            for period, heating, cooling in (
+                ("occupied", sensor.occupied_heating_active, sensor.occupied_cooling_active),
+                ("unoccupied", sensor.unoccupied_heating_active, sensor.unoccupied_cooling_active),
+            ):
+                if heating is not None:
+                    _add_mode(data, existing, actual_kinds, sensor.equipment_id, "zone_heating", period, heating, upper=True)
+                if cooling is not None:
+                    _add_mode(data, existing, actual_kinds, sensor.equipment_id, "zone_cooling", period, cooling, upper=False)
+        elif len(sensor.reset_modes) >= 2:
+            inferred = infer_reset([mode.model_dump() for mode in sensor.reset_modes])
+            _add_setpoint(data, existing, actual_kinds, sensor.equipment_id, SENSOR_KIND[sensor.kind], "always", inferred)
+        elif sensor.running is not None:
+            inferred = infer_quantile(sensor.running.model_dump(), upper=False)
+            inferred = Inferred(round(sensor.running.p50, 3), inferred.confidence, "mode-quantile")
+            _add_setpoint(data, existing, actual_kinds, sensor.equipment_id, SENSOR_KIND[sensor.kind], "always", inferred)
     return OperationsBatch.model_validate(data)
 
 
-def _add_setpoint(data, existing, equipment_id, kind, period, inferred) -> None:
+def _add_mode(data, existing, actual_kinds, equipment_id, kind, period, summary, *, upper: bool) -> None:
+    try:
+        inferred = infer_quantile(summary.model_dump(), upper=upper)
+    except ValueError:
+        return
+    _add_setpoint(data, existing, actual_kinds, equipment_id, kind, period, inferred)
+
+
+def _add_setpoint(data, existing, actual_kinds, equipment_id, kind, period, inferred) -> None:
+    if (equipment_id, kind) in actual_kinds:
+        return
+    if inferred.confidence < CONFIDENCE_FLOOR and inferred.method != "reset":
+        return
     key = (equipment_id, kind, period)
     if key in existing:
         return
@@ -92,6 +105,7 @@ def _add_setpoint(data, existing, equipment_id, kind, period, inferred) -> None:
             "source": "inferred",
             "confidence": inferred.confidence,
             "method": inferred.method,
+            "modes": None if inferred.modes is None else list(inferred.modes),
         }
     )
     existing.add(key)
@@ -631,12 +645,22 @@ def _meter_total(meters: list[dict], fuel: str) -> float | None:
 
 
 def _setpoint(setpoints: list[dict], kind: str, period: str, default: float) -> float:
-    exact = [item for item in setpoints if item["kind"] == kind and item["period"] == period]
-    fallback = [item for item in setpoints if item["kind"] == kind and item["period"] == "always"]
-    chosen = exact or fallback
-    if not chosen:
+    actual = [item for item in setpoints if item["kind"] == kind and item.get("source") == "actual"]
+    if actual:
+        exact = [item for item in actual if item["period"] == period] or actual
+        return sum(item["value"] for item in exact) / len(exact)
+    usable = [
+        item
+        for item in setpoints
+        if item["kind"] == kind
+        and item.get("source") == "inferred"
+        and (item.get("confidence") or 0) >= CONFIDENCE_FLOOR
+        and item["period"] in {period, "always"}
+    ]
+    exact = [item for item in usable if item["period"] == period] or usable
+    if not exact:
         return default
-    return sum(item["value"] for item in chosen) / len(chosen)
+    return sum(item["value"] for item in exact) / len(exact)
 
 
 def _occupied_hours(schedules: list[dict], days: float) -> float | None:

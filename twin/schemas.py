@@ -102,6 +102,7 @@ class Setpoint(StrictModel):
     source: Literal["actual", "inferred"]
     confidence: float | None = Field(default=None, ge=0, le=1)
     method: str | None = None
+    modes: list[float] | None = None
 
     @model_validator(mode="after")
     def unit_matches(self):
@@ -113,13 +114,30 @@ class Setpoint(StrictModel):
         return self
 
 
+class QuantileSummary(StrictModel):
+    """Fixed summary of one operating mode. About ten numbers, not a sample array."""
+
+    n: int = Field(ge=0)
+    hours: float = Field(ge=0)
+    p05: float
+    p10: float
+    p25: float
+    p50: float
+    p75: float
+    p90: float
+    p95: float
+
+
 class Sensor(StrictModel):
     equipment_id: str = Field(min_length=1, max_length=80)
     kind: Literal["supply_air_temp", "duct_static", "zone_temp", "chw_temp", "hw_temp"]
     unit: str
-    samples_while_running: list[float] = Field(default_factory=list, max_length=2000)
-    occupied_samples: list[float] = Field(default_factory=list, max_length=2000)
-    unoccupied_samples: list[float] = Field(default_factory=list, max_length=2000)
+    running: QuantileSummary | None = None
+    reset_modes: list[QuantileSummary] = Field(default_factory=list, max_length=4)
+    occupied_heating_active: QuantileSummary | None = None
+    occupied_cooling_active: QuantileSummary | None = None
+    unoccupied_heating_active: QuantileSummary | None = None
+    unoccupied_cooling_active: QuantileSummary | None = None
 
     @model_validator(mode="after")
     def unit_matches(self):
@@ -145,7 +163,7 @@ class FaultCount(StrictModel):
 class Meter(StrictModel):
     meter_id: str = Field(min_length=1, max_length=80)
     fuel: Literal["electricity", "natural_gas"]
-    unit: Literal["kWh", "therm"]
+    unit: Literal["kWh", "therm", "m3"]
     start: datetime
     end: datetime
     value: float = Field(ge=0)
@@ -162,8 +180,14 @@ class Meter(StrictModel):
             raise ValueError("meter end must be after start")
         if self.fuel == "electricity" and self.unit != "kWh":
             raise ValueError("electricity is reported in kWh")
-        if self.fuel == "natural_gas" and self.unit != "therm":
-            raise ValueError("natural gas is reported in therm")
+        if self.fuel == "natural_gas" and self.unit == "kWh":
+            self.value = self.value / 29.300111
+            self.unit = "therm"
+        elif self.fuel == "natural_gas" and self.unit == "m3":
+            self.value = self.value / 2.83168
+            self.unit = "therm"
+        elif self.fuel == "natural_gas" and self.unit != "therm":
+            raise ValueError("natural gas is reported in therm, kWh, or m3")
         return self
 
 

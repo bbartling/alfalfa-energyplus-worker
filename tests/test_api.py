@@ -4,6 +4,11 @@ import pytest
 from tools.fdd_sim.synthetic import SITES, batches_for, site_record
 
 
+def test_request_body_is_capped_at_one_megabyte(client, auth):
+    response = client.post("/v1/sites", content=b"{" + b"x" * 1_000_000, headers={**auth, "content-type": "application/json"})
+    assert response.status_code == 413
+
+
 def test_rejects_missing_key_raw_telemetry_and_other_sites(client, auth):
     assert client.get("/v1/sites/missing", headers=auth).status_code == 404
     assert client.post("/v1/sites", json=site_record(SITES[0])).status_code == 401
@@ -41,7 +46,7 @@ def test_infers_setpoints_calibrates_and_prices_a_what_if(client, auth):
     assert duct["value"] == 375
     heating = next(item for item in report["setpoints"] if item["kind"] == "zone_heating" and item["period"] == "occupied")
     assert heating["source"] == "inferred"
-    assert heating["method"] == "deadband-percentile"
+    assert heating["method"] == "mode-quantile"
     assert heating["value"] == spec["heating"]
     calibrated = client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth)
     assert calibrated.status_code == 200

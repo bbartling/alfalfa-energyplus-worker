@@ -105,20 +105,22 @@ def build_batch(spec: dict, year: int, month: int, hdd: float, cdd: float) -> di
                 "equipment_id": equipment,
                 "kind": "supply_air_temp",
                 "unit": "degC",
-                "samples_while_running": [spec["sat"]] * 24,
+                "running": _quantile(spec["sat"], n=24, hours=24),
             },
             {
                 "equipment_id": equipment,
                 "kind": "zone_temp",
                 "unit": "degC",
-                "occupied_samples": [spec["heating"]] * 40 + [spec["cooling"]] * 40,
-                "unoccupied_samples": [spec["heating"] - 2] * 20 + [spec["cooling"] + 3] * 20,
+                "occupied_heating_active": _quantile(spec["heating"], n=40, hours=40),
+                "occupied_cooling_active": _quantile(spec["cooling"], n=40, hours=40),
+                "unoccupied_heating_active": _quantile(spec["heating"] - 2, n=20, hours=20),
+                "unoccupied_cooling_active": _quantile(spec["cooling"] + 3, n=20, hours=20),
             },
             {
                 "equipment_id": equipment,
                 "kind": "duct_static",
                 "unit": "Pa",
-                "samples_while_running": [100] * 12,
+                "running": _quantile(100, n=12, hours=12),
             },
         ],
         "outdoor_air": [
@@ -162,6 +164,10 @@ def _generated_meters(spec: dict, month: dict, year: int, month_number: int) -> 
     electric_noise = _noise(spec["site_id"], year, month_number, "electricity")
     gas_noise = _noise(spec["site_id"], year, month_number, "gas")
     return (lights + fans + plug + cooling) * electric_noise, heating * gas_noise
+
+
+def _quantile(value: float, *, n: int, hours: float) -> dict:
+    return {"n": n, "hours": hours, "p05": value, "p10": value, "p25": value, "p50": value, "p75": value, "p90": value, "p95": value}
 
 
 def _noise(site_id: str, year: int, month: int, fuel: str) -> float:
