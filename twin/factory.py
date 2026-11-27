@@ -196,6 +196,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if engine not in {"quick-estimate", "energyplus"}:
             raise APIError(422, "engine must be quick-estimate or energyplus")
         if engine == "energyplus":
+            from twin.eplus_calibrate import prototype_match
+
+            site = require_site(session, site_id, key)
+            mismatch = prototype_match(site)
+            if mismatch:
+                raise APIError(422, mismatch)
             job = create_job(session, site_id, "energyplus-calibration", {"reason": "manual", "engine": engine, "span": "year"})
             session.commit()
             if settings.inline_jobs and settings.energyplus_inline:

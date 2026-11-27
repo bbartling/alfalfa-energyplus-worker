@@ -75,6 +75,17 @@ def apply_case(objects: list[list[str]], case: dict, span: str, station: dict | 
             obj[3] = _num(case["fan_efficiency"])
         elif kind == "Coil:Cooling:DX:SingleSpeed" and len(obj) > 5:
             obj[5] = _num(case["cooling_cop"])
+        elif kind == "Coil:Heating:DX:SingleSpeed" and case.get("heating_fuel", "heat_pump") == "heat_pump":
+            if "heating_cop" in case and len(obj) > 4:
+                obj[4] = _num(case["heating_cop"])
+        elif kind == "Coil:Heating:DX:SingleSpeed" and case.get("heating_fuel") in {"gas", "electric"}:
+            _replace_field(obj, "-12.2", "99")
+        elif kind == "Coil:Heating:Fuel" and case.get("heating_fuel") == "electric" and len(obj) > 3:
+            obj[3] = "Electricity"
+        elif kind == "Coil:Heating:Fuel" and "heating_efficiency" in case and len(obj) > 4:
+            obj[4] = _num(case["heating_efficiency"])
+        elif kind == "AirLoopHVAC:UnitarySystem" and case.get("heating_fuel") in {"gas", "electric"}:
+            _replace_field(obj, "4.44444444444446", "50")
         elif kind == "ZoneInfiltration:DesignFlowRate":
             index = _INFILTRATION_FIELD.get(obj[4] if len(obj) > 4 else "")
             if index is not None and len(obj) > index:
@@ -119,6 +130,12 @@ def _apply_station(objects: list[list[str]], station: dict) -> None:
 
 def _method(obj: list[str]) -> str:
     return obj[4] if len(obj) > 4 else ""
+
+
+def _replace_field(obj: list[str], old: str, new: str) -> None:
+    for index, field in enumerate(obj):
+        if field == old:
+            obj[index] = new
 
 
 def _num(value: float) -> str:

@@ -79,6 +79,8 @@ Meters are monthly totals, with optional daily or hourly rows. If a monthly row 
 
 ## Calibration and what-ifs
 
+Site registration accepts `heating_fuel` (`gas`, `electric`, or `heat_pump`, default `heat_pump`) and `system_type` (default `psz-ac`). EnergyPlus calibration is the checked-in small-office packaged RTU. A heat pump site tunes heating COP. A gas or electric site locks the compressor out and runs the fuel coil, with electricity as the fuel type when `heating_fuel` is `electric`. Any other building or system is `422`.
+
 `POST /v1/sites/{site_id}/calibrations` fits a screening change-point model (baseload W/m², cooling kWh per CDD per m², heating therm per HDD per m²) to the usable months. Faults with `exclude_from_calibration` are dropped. The result is labeled `screening` and is not a Guideline 14 promotion. `?engine=energyplus` is the path that can be promoted under Guideline 14.
 
 `POST /v1/sites/{site_id}/scenarios` applies `raise_cooling_setpoint`, `lower_heating_setpoint`, or `trim_run_hours` and returns annual kWh, therms, cost savings, simple payback, NPV, and a band from the nearest parameter sets.
