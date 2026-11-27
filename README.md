@@ -1,6 +1,6 @@
 # Building twin
 
-A small service that calibrates a building energy model from the compact summaries an IoT FDD application already computes: run hours, schedules, setpoints, outdoor-air fraction, fault counts, monthly meters, and a weather summary. It checks the result with ASHRAE Guideline 14 and prices simple ROI what-ifs.
+A small service that calibrates a building energy model from the compact summaries an IoT FDD application already computes: run hours, schedules, setpoints, outdoor-air fraction, fault counts, monthly meters, and a weather summary. EnergyPlus calibrations are checked with ASHRAE Guideline 14. The quick estimate is a screening change-point model and is not a Guideline 14 result.
 
 Raw interval telemetry is not accepted. There is no Parquet path.
 
@@ -12,7 +12,7 @@ docker compose --profile demo up --build -d
 
 Then open [http://127.0.0.1:18080](http://127.0.0.1:18080).
 
-That one command starts Postgres, the API, and a poster. The poster backfills six months for two offices, retries if the API is still starting, re-posts a batch to show it is idempotent, pushes one newer month, calibrates, and stores a cooling-setpoint what-if. The home page lists each site. A site page shows CV(RMSE), NMBE, pass or fail, and the what-if payback and NPV.
+That one command starts Postgres, the API, and a poster. The poster backfills a year for two offices, retries if the API is still starting, re-posts a batch to show it is idempotent, pushes one newer month, fits a screening change-point model, and stores a cooling-setpoint what-if. The home page lists each site. A site page shows the screening CV(RMSE) and NMBE, and the what-if payback and NPV.
 
 The local API key is `local-demo-key` (override `TWIN_BOOTSTRAP_KEY`). Interactive docs are at [http://127.0.0.1:18080/docs](http://127.0.0.1:18080/docs).
 
@@ -32,9 +32,9 @@ Weekly or monthly JSON, one batch per site. The contract is [docs/data-contract.
 
 Each stored setpoint is `source=actual` or `source=inferred` and includes a confidence score. Fault periods marked `exclude_from_calibration` are left out of the fit.
 
-Calibration compares monthly electricity (kWh) and gas (therm) with Guideline 14. Monthly limits are CV(RMSE) ≤ 15% and |NMBE| ≤ 5%. Hourly limits are 30% and 10% when an hourly meter series is present. `p` defaults to 1.
+EnergyPlus calibration compares monthly electricity (kWh) and gas (therm) with Guideline 14. Monthly limits are CV(RMSE) ≤ 15% and |NMBE| ≤ 5%. Hourly limits are 30% and 10% when an hourly meter series is present. `p` defaults to 1.
 
-The quickstart calibrator is labeled **quick estimate**. It is a summary energy model so the demo finishes immediately. The same CV(RMSE) and NMBE functions accept an EnergyPlus `Electricity:Facility` series (joules converted to kWh).
+The quickstart calibrator is a **screening** change-point model (baseload, cooling per degree-day, heating per degree-day). A setpoint change moves the balance point. It is never promoted and it is not shown under a Guideline 14 heading. The same CV(RMSE) and NMBE functions accept an EnergyPlus `Electricity:Facility` series (joules converted to kWh).
 
 ## EnergyPlus calibration
 
@@ -48,7 +48,7 @@ docker compose --profile energyplus up --build -d
 
 CI runs two three-day simulations (`pytest -m energyplus`), not the full grid. `make test` skips that marker.
 
-An ROI what-if on a quick-estimate model stays in that model and is labeled quick estimate. A what-if on an EnergyPlus calibration is queued the same way and reruns the calibrated case, then the case with the measure applied (setpoint change or a shorter occupied window). The savings, payback, NPV, and ensemble band come from those runs.
+An ROI what-if on a screening model stays in that model, is labeled screening, and is annualized only after 12 usable months. Trimming run hours changes fan energy only. A what-if on an EnergyPlus calibration is queued the same way and reruns the calibrated case, then the case with the measure applied (setpoint change or a shorter occupied window). The savings, payback, NPV, and ensemble band come from those runs.
 
 A monthly policy and a weekly tracking policy live on `POST /v1/sites/{site_id}/policies`. `POST /v1/scheduler/tick` enqueues what is due. Two tracking results with CV(RMSE) above 30% enqueue a recalibration. Long runs can be pulled by `python -m twin.runner` with `TWIN_INLINE_JOBS=0`.
 

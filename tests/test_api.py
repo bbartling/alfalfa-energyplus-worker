@@ -46,11 +46,14 @@ def test_infers_setpoints_calibrates_and_prices_a_what_if(client, auth):
     calibrated = client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth)
     assert calibrated.status_code == 200
     result = calibrated.json()["result"]
-    assert result["decision"] == "promoted"
+    assert result["decision"] == "screening"
     assert result["engine"]["name"] == "quick-estimate"
-    assert result["engine"]["label"] == "quick estimate"
-    assert result["parameters"] == {"lighting_w_m2": 10.0, "cooling_cop": 3.5, "infiltration_ach": 0.6}
-    assert all(item["pass"] for item in result["metrics"])
+    assert result["engine"]["label"] == "screening"
+    assert result["engine"]["claim"] == "screening"
+    truth = spec["truth"]
+    for name, value in truth.items():
+        assert result["parameters"][name] == pytest.approx(value, rel=0.15)
+    assert all(item["claim"] == "screening" and item["pass"] is None for item in result["metrics"])
     scenario = client.post(
         f"/v1/sites/{spec['site_id']}/scenarios",
         headers=auth,
@@ -69,19 +72,23 @@ def test_infers_setpoints_calibrates_and_prices_a_what_if(client, auth):
     assert scenario.status_code == 200
     priced = scenario.json()["result"]
     assert priced["annual_kwh_savings"] > 0
-    assert priced["label"] == "quick estimate"
+    assert priced["annualized"] is True
+    assert priced["label"] == "screening"
+    assert priced["claim"] == "screening"
     assert priced["simple_payback_years"] > 0
     low, high = priced["cost_savings_band_usd"]
     assert low <= priced["annual_cost_savings_usd"] <= high
     page = client.get(f"/sites/{spec['site_id']}")
     assert "CV(RMSE)" in page.text and "NMBE" in page.text and "NPV" in page.text
+    assert "Screening estimate" in page.text
+    assert "Guideline 14" not in page.text
     coverage = client.get(
         f"/v1/sites/{spec['site_id']}/coverage",
         headers=auth,
-        params={"start": "2025-10-01T00:00:00Z", "end": "2026-05-01T00:00:00Z"},
+        params={"start": "2025-03-01T00:00:00Z", "end": "2026-05-01T00:00:00Z"},
     ).json()
-    assert "2025-10" in coverage["months_missing"]
-    assert "2025-11" in coverage["months_present"]
+    assert "2025-03" in coverage["months_missing"]
+    assert "2025-04" in coverage["months_present"]
 
 
 def test_scheduler_is_idempotent_within_a_month_and_drift_recalibrates(client, auth):

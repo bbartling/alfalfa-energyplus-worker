@@ -79,7 +79,7 @@ Meters are monthly totals, with optional daily or hourly rows. If a monthly row 
 
 ## Calibration and what-ifs
 
-`POST /v1/sites/{site_id}/calibrations` fits lighting W/m², cooling COP, and infiltration to the usable months (faults with `exclude_from_calibration` are dropped). The last two usable months are the holdout. The model is promoted only when train and holdout both pass Guideline 14.
+`POST /v1/sites/{site_id}/calibrations` fits a screening change-point model (baseload W/m², cooling kWh per CDD per m², heating therm per HDD per m²) to the usable months. Faults with `exclude_from_calibration` are dropped. The result is labeled `screening` and is not a Guideline 14 promotion. `?engine=energyplus` is the path that can be promoted under Guideline 14.
 
 `POST /v1/sites/{site_id}/scenarios` applies `raise_cooling_setpoint`, `lower_heating_setpoint`, or `trim_run_hours` and returns annual kWh, therms, cost savings, simple payback, NPV, and a band from the nearest parameter sets.
 
