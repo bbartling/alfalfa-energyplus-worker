@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Pong</title>
+  <style>
+    :root {
+      --bg: #07080d;
+      --ink: #f4f1e8;
+      --dim: #8b8d97;
+      --line: rgba(244, 241, 232, 0.18);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 1rem;
+    }
+    h1 {
+      margin: 0;
+      letter-spacing: 0.45em;
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+    #wrap {
+      position: relative;
+      width: min(920px, 100%);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background:
+        radial-gradient(circle at 50% 0%, #151821 0%, var(--bg) 70%);
+      border: 2px solid var(--ink);
+      border-radius: 4px;
+      cursor: none;
+    }
+    .hud {
+      display: flex;
+      justify-content: space-between;
+      width: min(920px, 100%);
+      color: var(--dim);
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+    }
+  </style>
+</head>
+<body>
+  <h1>PONG</h1>
+  <div id="wrap">
+    <canvas id="game" width="900" height="540"></canvas>
+  </div>
+  <div class="hud">
+    <span>Mouse, touch, or arrow keys</span>
+    <span>Press R to restart</span>
+  </div>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width;
+    const H = canvas.height;
+    const PADDLE_W = 12;
+    const PADDLE_H = 96;
+    const PADDLE_X_MARGIN = 28;
+    const BALL_R = 8;
+    const WIN_SCORE = 11;
+    const PLAYER_SPEED = 520;
+    const AI_MAX_SPEED = 380;
+    const BALL_SPEED = 420;
+
+    const state = {
+      playerY: H / 2 - PADDLE_H / 2,
+      aiY: H / 2 - PADDLE_H / 2,
+      ballX: W / 2,
+      ballY: H / 2,
+      ballVX: 0,
+      ballVY: 0,
+      playerScore: 0,
+      aiScore: 0,
+      keys: { up: false, down: false },
+      pointerY: null,
+      running: true,
+      winner: null,
+      lastTs: 0,
+    };
+
+    function resetBall(direction) {
+      state.ballX = W / 2;
+      state.ballY = H / 2;
+      const angle = (Math.random() * 0.6 - 0.3);
+      const dir = direction || (Math.random() < 0.5 ? -1 : 1);
+      state.ballVX = Math.cos(angle) * BALL_SPEED * dir;
+      state.ballVY = Math.sin(angle) * BALL_SPEED;
+    }
+
+    function restart() {
+      state.playerY = H / 2 - PADDLE_H / 2;
+      state.aiY = H / 2 - PADDLE_H / 2;
+      state.playerScore = 0;
+      state.aiScore = 0;
+      state.running = true;
+      state.winner = null;
+      resetBall();
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function playerX() { return PADDLE_X_MARGIN; }
+    function aiX() { return W - PADDLE_X_MARGIN - PADDLE_W; }
+
+    function paddleHit(px, py, ballX, ballY) {
+      return (
+        ballX + BALL_R >= px &&
+        ballX - BALL_R <= px + PADDLE_W &&
+        ballY + BALL_R >= py &&
+        ballY - BALL_R <= py + PADDLE_H
+      );
+    }
+
+    function bounceOffPaddle(py, goingRight) {
+      const relative = (state.ballY - (py + PADDLE_H / 2)) / (PADDLE_H / 2);
+      const angle = relative * 0.7;
+      const speed = Math.min(Math.hypot(state.ballVX, state.ballVY) * 1.05, 780);
+      const dir = goingRight ? 1 : -1;
+      state.ballVX = Math.cos(angle) * speed * dir;
+      state.ballVY = Math.sin(angle) * speed;
+    }
+
+    function update(dt) {
+      if (!state.running) return;
+
+      if (state.pointerY !== null) {
+        state.playerY = clamp(state.pointerY - PADDLE_H / 2, 0, H - PADDLE_H);
+      } else {
+        let move = 0;
+        if (state.keys.up) move -= 1;
+        if (state.keys.down) move += 1;
+        state.playerY = clamp(state.playerY + move * PLAYER_SPEED * dt, 0, H - PADDLE_H);
+      }
+
+      const aiCenter = state.aiY + PADDLE_H / 2;
+      const target = state.ballY + (Math.random() - 0.5) * 18;
+      const aiMove = clamp(target - aiCenter, -AI_MAX_SPEED * dt, AI_MAX_SPEED * dt);
+      state.aiY = clamp(state.aiY + aiMove, 0, H - PADDLE_H);
+
+      state.ballX += state.ballVX * dt;
+      state.ballY += state.ballVY * dt;
+
+      if (state.ballY - BALL_R <= 0) {
+        state.ballY = BALL_R;
+        state.ballVY *= -1;
+      } else if (state.ballY + BALL_R >= H) {
+        state.ballY = H - BALL_R;
+        state.ballVY *= -1;
+      }
+
+      if (state.ballVX < 0 && paddleHit(playerX(), state.playerY, state.ballX, state.ballY)) {
+        state.ballX = playerX() + PADDLE_W + BALL_R;
+        bounceOffPaddle(state.playerY, true);
+      } else if (state.ballVX > 0 && paddleHit(aiX(), state.aiY, state.ballX, state.ballY)) {
+        state.ballX = aiX() - BALL_R;
+        bounceOffPaddle(state.aiY, false);
+      }
+
+      if (state.ballX + BALL_R < 0) {
+        state.aiScore += 1;
+        afterPoint(-1);
+      } else if (state.ballX - BALL_R > W) {
+        state.playerScore += 1;
+        afterPoint(1);
+      }
+    }
+
+    function afterPoint(nextDir) {
+      if (state.playerScore >= WIN_SCORE || state.aiScore >= WIN_SCORE) {
+        state.running = false;
+        state.winner = state.playerScore > state.aiScore ? "You win" : "AI wins";
+        return;
+      }
+      resetBall(nextDir);
+    }
+
+    function drawCourt() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.strokeStyle = "rgba(244, 241, 232, 0.28)";
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 14]);
+      ctx.beginPath();
+      ctx.moveTo(W / 2, 12);
+      ctx.lineTo(W / 2, H - 12);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function drawPaddle(x, y) {
+      ctx.fillStyle = "#f4f1e8";
+      ctx.fillRect(x, y, PADDLE_W, PADDLE_H);
+    }
+
+    function draw() {
+      drawCourt();
+      drawPaddle(playerX(), state.playerY);
+      drawPaddle(aiX(), state.aiY);
+
+      ctx.beginPath();
+      ctx.arc(state.ballX, state.ballY, BALL_R, 0, Math.PI * 2);
+      ctx.fillStyle = "#f4f1e8";
+      ctx.fill();
+
+      ctx.font = "700 48px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#f4f1e8";
+      ctx.textAlign = "center";
+      ctx.fillText(String(state.playerScore), W / 2 - 80, 64);
+      ctx.fillText(String(state.aiScore), W / 2 + 80, 64);
+
+      ctx.font = "500 16px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "rgba(244, 241, 232, 0.55)";
+      ctx.fillText("YOU", W / 2 - 80, 88);
+      ctx.fillText("AI", W / 2 + 80, 88);
+
+      if (!state.running && state.winner) {
+        ctx.fillStyle = "rgba(7, 8, 13, 0.72)";
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = "#f4f1e8";
+        ctx.font = "700 54px 'Segoe UI', sans-serif";
+        ctx.fillText(state.winner, W / 2, H / 2 - 10);
+        ctx.font = "500 20px 'Segoe UI', sans-serif";
+        ctx.fillStyle = "rgba(244, 241, 232, 0.8)";
+        ctx.fillText("Press R to restart", W / 2, H / 2 + 32);
+      }
+    }
+
+    function loop(ts) {
+      if (!state.lastTs) state.lastTs = ts;
+      const dt = Math.min((ts - state.lastTs) / 1000, 0.04);
+      state.lastTs = ts;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function eventY(event) {
+      const rect = canvas.getBoundingClientRect();
+      const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+      return ((clientY - rect.top) / rect.height) * H;
+    }
+
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowUp" || event.key === "w" || event.key === "W") {
+        state.keys.up = true;
+        state.pointerY = null;
+        event.preventDefault();
+      }
+      if (event.key === "ArrowDown" || event.key === "s" || event.key === "S") {
+        state.keys.down = true;
+        state.pointerY = null;
+        event.preventDefault();
+      }
+      if (event.key === "r" || event.key === "R") {
+        restart();
+      }
+    });
+
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "ArrowUp" || event.key === "w" || event.key === "W") state.keys.up = false;
+      if (event.key === "ArrowDown" || event.key === "s" || event.key === "S") state.keys.down = false;
+    });
+
+    canvas.addEventListener("mousemove", (event) => {
+      state.pointerY = eventY(event);
+    });
+    canvas.addEventListener("mouseleave", () => {
+      state.pointerY = null;
+    });
+    canvas.addEventListener("touchstart", (event) => {
+      state.pointerY = eventY(event);
+      event.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener("touchmove", (event) => {
+      state.pointerY = eventY(event);
+      event.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener("touchend", () => {
+      state.pointerY = null;
+    });
+
+    restart();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

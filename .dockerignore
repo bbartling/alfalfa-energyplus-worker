@@ -1,6 +1,8 @@
 .git
-_alfalfa_upstream
+.github
+tests
+jobs
 .venv
 __pycache__
-work
-.env
+*.pyc
+

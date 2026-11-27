@@ -2,42 +2,35 @@ name: CI
 
 on:
   push:
-    branches: [develop]
+    branches: [main, develop]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  lint-and-unit:
-    runs-on: ubuntu-latest
+  python:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install
-        run: pip install -r requirements.txt -r requirements-dev.txt
-      - name: Lint
-        run: ruff check .
-      - name: Unit tests
-        run: pytest
+          cache: pip
+      - run: pip install -r requirements.txt pytest ruff
+      - run: ruff check app tests
+      - run: PYTHONPATH=. pytest -q
 
-  compose:
-    runs-on: ubuntu-latest
+  container:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Quickstart smoke
-        run: TWIN_ENV=demo TWIN_BOOTSTRAP_KEY=local-demo-key TWIN_DASHBOARD_OPEN=1 POSTGRES_PASSWORD=twin DATABASE_URL=postgresql+psycopg://twin:twin@db:5432/twin docker compose --profile demo up --build --abort-on-container-exit --exit-code-from poster
-      - name: Alfalfa compose renders an in-network S3 endpoint
-        run: bash scripts/launch.sh config
-
-  energyplus-smoke:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
         with:
-          python-version: "3.12"
-      - name: Install
-        run: pip install -r requirements.txt -r requirements-dev.txt
-      - name: Two short EnergyPlus runs
-        run: pytest -o addopts='-q -m energyplus'
+          context: .
+          push: false
+          tags: vibe23-energyplus-worker:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -1,8 +1,0 @@
-FROM python:3.12-slim
-WORKDIR /app
-ENV PYTHONPATH=/app
-COPY requirements-alfalfa.txt .
-RUN pip install --no-cache-dir -r requirements-alfalfa.txt
-COPY app/alfalfa_backend.py app/alfalfa_backend.py
-COPY examples/alfalfa_smoke.py examples/alfalfa_smoke.py
-CMD ["python", "examples/alfalfa_smoke.py"]

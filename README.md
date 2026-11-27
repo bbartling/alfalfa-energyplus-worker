@@ -1,77 +1,129 @@
-# Building twin
+# Vibe 23 EnergyPlus Worker
 
-A small service that calibrates a building energy model from the compact summaries an IoT FDD application already computes: run hours, schedules, setpoints, outdoor-air fraction, fault counts, monthly meters, and a weather summary. EnergyPlus calibrations are checked with ASHRAE Guideline 14. The quick estimate is a screening change-point model and is not a Guideline 14 result.
+> **Demo:** `/` currently serves a playable Pong game so a new Render deploy can be shown in the browser. Move the left paddle with the mouse, touch, or arrow keys, and press **R** to restart. The EnergyPlus worker API is unchanged (`/healthz`, `/docs`, `/v1/jobs`).
 
-Raw interval telemetry is not accepted. There is no Parquet path.
+Authenticated FastAPI worker that runs **EnergyPlus 26.1** simulations in Docker. It backs the [Vibe 23 Residential DSM Studio](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) (Streamlit) with a **queued, one-at-a-time** job runner (`MAX_CONCURRENT_JOBS`, default 1).
 
-## Quickstart
+| | |
+|---|---|
+| **Live service** | [https://vibe23-energyplus-worker.onrender.com/](https://vibe23-energyplus-worker.onrender.com/) |
+| **OpenAPI / Swagger** | [https://vibe23-energyplus-worker.onrender.com/docs](https://vibe23-energyplus-worker.onrender.com/docs) |
+| **Health** | [https://vibe23-energyplus-worker.onrender.com/healthz](https://vibe23-energyplus-worker.onrender.com/healthz) |
+| **Source** | [github.com/bbartling/vibe23-energyplus-worker](https://github.com/bbartling/vibe23-energyplus-worker) |
+| **Frontend (Vibe 23)** | [`vibe_code_apps_23`](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) in [py-bacnet-stacks-playground](https://github.com/bbartling/py-bacnet-stacks-playground) |
 
-```bash
-docker compose --profile demo up --build -d
+The image downloads the official EnergyPlus 26.1 Ubuntu 24.04 x86-64 release, verifies its published SHA-256 checksum, and runs each job in a separate directory. Job artifacts expire after 24 hours by default.
+
+> **Free-tier note:** The public deploy uses Render’s free web service tier. Idle instances **sleep** and need a wake (first `/healthz` or Studio **Wake worker**, typically 30–90s). Prefer a paid always-on instance for long campaigns (e.g. full 169-cell searches).
+
+## Deploy on Render
+
+1. Push this repository to GitHub (`develop` or `main`).
+2. In Render: **New → Blueprint** and select the repo so [`render.yaml`](render.yaml) applies.
+3. Confirm Environment includes `API_KEY` (Blueprint may use `generateValue: true`).
+4. If `/healthz` shows `"api_key_configured": false`, set `API_KEY` manually:
+
+**Dashboard** — Render → `vibe23-energyplus-worker` → **Environment** → `API_KEY` = a long random secret → Save → Manual Deploy.
+
+**Script** (needs a Render *account* API key `rnd_…`, not the worker bearer key):
+
+```powershell
+$env:RENDER_API_KEY = "rnd_..."
+.\scripts\configure_render.ps1
 ```
 
-Then open [http://127.0.0.1:18080](http://127.0.0.1:18080).
+Writes gitignored `.env.render.local` for local Streamlit.
 
-That one command starts Postgres, the API, and a poster. The poster backfills a year for two offices, retries if the API is still starting, re-posts a batch to show it is idempotent, pushes one newer month, fits a screening change-point model, and stores a cooling-setpoint what-if. The home page lists each site. A site page shows the screening CV(RMSE) and NMBE, and the what-if payback and NPV.
+5. Point Studio / Streamlit Community Cloud secrets at the live service:
 
-The local API key is `local-demo-key` (override `TWIN_BOOTSTRAP_KEY`). Interactive docs are at [http://127.0.0.1:18080/docs](http://127.0.0.1:18080/docs).
-
-```bash
-docker compose --profile demo logs poster
-docker compose down
+```toml
+EPLUS_BACKEND = "worker"
+EPLUS_WORKER_URL = "https://vibe23-energyplus-worker.onrender.com"
+EPLUS_WORKER_API_KEY = "same-as-render-service-API_KEY"
 ```
 
-`make quickstart` is the same command.
-
-## What gets posted
-
-Weekly or monthly JSON, one batch per site. The contract is [docs/data-contract.md](docs/data-contract.md). When a setpoint is missing, the service infers it from mode-split quantiles:
-
-- heating is the upper quantile of heating-active hours, and cooling is the lower quantile of cooling-active hours
-- a supply-air reset keeps both modes instead of averaging them
-- a mode active for fewer than 8 hours is not emitted, and confidence below 0.6 is dropped
-
-An actual setpoint wins over an inferred one. Fault periods marked `exclude_from_calibration` are left out of the fit. Only a main meter is calibrated, and a period must cover at least 95% of its month.
-
-EnergyPlus calibration compares a full year of monthly electricity (kWh) and gas (therm) with Guideline 14. Monthly limits are CV(RMSE) ≤ 15% and |NMBE| ≤ 5%. Fewer than 12 usable months is `insufficient-data`, not a Guideline 14 result. Hourly Guideline 14 is not claimed. `p` defaults to 1 and is shown with the number of tuned parameters.
-
-The quickstart calibrator is a **screening** change-point model (baseload, cooling per degree-day, heating per degree-day). A setpoint change moves the balance point. It is never promoted and it is not shown under a Guideline 14 heading. The same CV(RMSE) and NMBE functions accept an EnergyPlus `Electricity:Facility` series (joules converted to kWh).
-
-## EnergyPlus calibration
-
-`POST /v1/sites/{site_id}/calibrations?engine=energyplus` queues a worker job. The job maps the summary schedules and setpoints onto the DOE SmallOffice prototype (ASHRAE 90.1-2013, checked in under `models/`), then runs a coarse grid and a half-step refinement on infiltration, lighting and plug LPD, fan efficiency, cooling COP, and the setpoint offset. Each point is one annual run of EnergyPlus 24.2 in `nrel/openstudio:3.9.0`. Monthly `Electricity:Facility` and `NaturalGas:Facility` are scaled by site area over the prototype area (511 m²) and scored with Guideline 14. Weather is the nearest station in the OpenStudio standards set (TMY3, CWEC, or CZ2010). It is not the actual year of the bills. The run records the station id and replaces the site location and design days. One annual run of this small office is about ten seconds, so the default grid is tens of minutes. A wider grid or a larger model is the long job the worker is for.
-
-The API does not run that sweep inline. Start the worker next to the API:
+Verify:
 
 ```bash
-docker compose --profile energyplus up --build -d
+curl https://vibe23-energyplus-worker.onrender.com/healthz
+# expect ok=true and api_key_configured=true
 ```
 
-CI runs two three-day simulations (`pytest -m energyplus`), not the full grid. `make test` skips that marker.
+## API
 
-An ROI what-if on a screening model stays in that model, is labeled screening, and is annualized only after 12 usable months. Trimming run hours changes fan energy only. A what-if on an EnergyPlus calibration reruns each Guideline 14 passing member as its own baseline and its own altered case. The savings band is the 10th to 90th percentile.
+Interactive docs: [https://vibe23-energyplus-worker.onrender.com/docs](https://vibe23-energyplus-worker.onrender.com/docs)
 
-A policy stores its engine. `POST /v1/scheduler/tick` enqueues what is due. EnergyPlus tracking reruns the calibrated case on the nearest typical year (not the actual month's weather). Three of the last six tracking results outside the monthly limits enqueue a recalibration with that same engine. The worker claims a job with a lease (`python -m twin.runner`, `TWIN_INLINE_JOBS=0`). Outbound webhooks are https only, signed as `timestamp.body`.
-
-## Tests
+Health (no auth):
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
-make test
-make lint
+curl https://vibe23-energyplus-worker.onrender.com/healthz
 ```
 
-## Optional Alfalfa
-
-Alfalfa stays an unmodified upstream stack for a live model, not for calibration sweeps. It publishes no host ports. Presigned uploads use `http://minio:9000` from `.env`, which works on Linux.
+Submit a simulation:
 
 ```bash
-make alfalfa-config
-make alfalfa
+curl -X POST https://vibe23-energyplus-worker.onrender.com/v1/jobs \
+  -H "Authorization: Bearer $EPLUS_WORKER_API_KEY" \
+  -F "idf=@model.idf" \
+  -F "epw=@weather.epw" \
+  -F "expand_objects=true"
 ```
 
-Images are pinned to the Alfalfa revision `af3caee`. See [docs/simpler-alternative.md](docs/simpler-alternative.md) for when the single container is enough.
+Poll and download:
 
-## Security
+```bash
+curl -H "Authorization: Bearer $EPLUS_WORKER_API_KEY" \
+  https://vibe23-energyplus-worker.onrender.com/v1/jobs/JOB_ID
 
-The quickstart binds `127.0.0.1:18080` only and runs with `TWIN_ENV=demo`. It does not bind port 80. `TWIN_ENV=prod` refuses to start when the bootstrap key is missing, is `local-demo-key`, or is shorter than 32 characters, and it refuses an open dashboard. API keys are tenant scoped: a key sees only its tenant's sites, jobs, and webhooks. Put your own TLS proxy in front. Alfalfa is not authenticated upstream, so leave it on the internal network.
+curl -L -H "Authorization: Bearer $EPLUS_WORKER_API_KEY" \
+  -o results.zip \
+  https://vibe23-energyplus-worker.onrender.com/v1/jobs/JOB_ID/results
+```
+
+List recent jobs + queue depth (Streamlit sidebar uses this):
+
+```bash
+curl -H "Authorization: Bearer $EPLUS_WORKER_API_KEY" \
+  "https://vibe23-energyplus-worker.onrender.com/v1/jobs?limit=20"
+```
+
+`/healthz` also reports `queue: {queued, running, max_concurrent}` after this version is deployed.
+
+## Local development
+
+```bash
+docker build -t vibe23-energyplus-worker .
+docker run --rm -p 8000:8000 -e API_KEY=local-secret vibe23-energyplus-worker
+```
+
+Open [http://localhost:8000/docs](http://localhost:8000/docs).
+
+Python-only checks (no EnergyPlus binary build):
+
+```bash
+python -m venv .venv
+. .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt pytest ruff
+pytest -q
+ruff check app tests
+```
+
+## Operational behavior
+
+- `API_KEY` bearer token required for every job endpoint.
+- `MAX_CONCURRENT_JOBS=1` avoids CPU contention on a small instance.
+- `SIM_TIMEOUT_SECONDS=900` caps one EnergyPlus process at 15 minutes.
+- `MAX_UPLOAD_MB=50` per uploaded file.
+- `JOB_TTL_HOURS=24` cleans old jobs on later activity.
+- Results ZIP is returned even on severe/fatal EnergyPlus errors so callers can read `eplusout.err`.
+- Running jobs do not survive a restart; completed files live only on the instance filesystem unless you add a persistent disk or object storage.
+
+## Vibe 23 integration
+
+This service runs **one prepared IDF + one EPW** per job. The Studio client in [`vibe_code_apps_23`](https://github.com/bbartling/py-bacnet-stacks-playground/tree/develop/vibe_code_apps_23) prepares candidate IDFs, submits/polls jobs, and builds `ranking.json` / `twin_export.json`.
+
+For large catalogs (up to 169 cells), keep concurrency low and watch free-tier sleep + CPU limits.
+
+## License and provenance
+
+Worker code is MIT. EnergyPlus is downloaded from the official NatLabRockies release and retains its own license. This repository does not redistribute the EnergyPlus archive.

@@ -1,7 +1,12 @@
-_alfalfa_upstream/
+# Local / CI secrets — never commit.
 .env
+.env.*
+!.env.example
+*.pem
 .venv/
 __pycache__/
-*.pyc
-
-work/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+results/
+jobs/
