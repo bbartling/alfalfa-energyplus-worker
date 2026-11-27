@@ -68,6 +68,7 @@ def test_infers_setpoints_calibrates_and_prices_a_what_if(client, auth):
     assert scenario.status_code == 200
     priced = scenario.json()["result"]
     assert priced["annual_kwh_savings"] > 0
+    assert priced["label"] == "quick estimate"
     assert priced["simple_payback_years"] > 0
     low, high = priced["cost_savings_band_usd"]
     assert low <= priced["annual_cost_savings_usd"] <= high
@@ -132,6 +133,45 @@ def test_energyplus_calibration_is_queued_for_the_worker(client, auth):
     assert body["status"] == "queued"
     assert body["kind"] == "energyplus-calibration"
     assert client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth, params={"engine": "other"}).status_code == 422
+
+
+def test_energyplus_what_if_is_queued_until_the_worker_runs_it(client, auth):
+    spec = SITES[0]
+    client.post("/v1/sites", json=site_record(spec), headers=auth)
+    from twin.db import ModelVersion
+    from twin.eplus_calibrate import base_case
+
+    with client.app.state.Session() as session:
+        session.add(
+            ModelVersion(
+                id="ep-model",
+                site_id=spec["site_id"],
+                status="active",
+                parameters=base_case(),
+                ensemble=[base_case()],
+                metrics=[],
+                engine={"name": "energyplus", "label": "EnergyPlus"},
+            )
+        )
+        session.commit()
+    queued = client.post(
+        f"/v1/sites/{spec['site_id']}/scenarios",
+        headers=auth,
+        json={
+            "name": "Raise occupied cooling setpoint 1 C",
+            "measures": [{"name": "raise_cooling_setpoint", "delta_c": 1}],
+            "costs": {
+                "implementation_usd": 2500,
+                "electricity_usd_per_kwh": 0.14,
+                "gas_usd_per_therm": 1.1,
+                "discount_rate": 0,
+                "horizon_years": 3,
+            },
+        },
+    )
+    assert queued.status_code == 202
+    assert queued.json()["kind"] == "energyplus-scenario"
+    assert queued.json()["status"] == "queued"
 
 
 def test_live_alfalfa_is_optional(client, auth):

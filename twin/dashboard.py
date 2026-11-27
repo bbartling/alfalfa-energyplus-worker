@@ -102,13 +102,15 @@ def _scenario_table(scenarios: list[dict]) -> str:
     rows = []
     for item in scenarios:
         result = item.get("result") or {}
+        label = result.get("label")
+        title = item["name"] if not label else f"{item['name']} · {label}"
         payback = result.get("simple_payback_years")
         payback_text = "—" if payback is None else f"{payback:.1f} y"
         band = result.get("cost_savings_band_usd") or [None, None]
         rows.append(
             "<tr><td>{name}</td><td>{kwh:.0f}</td><td>{therms:.1f}</td><td>{usd:,.0f}</td>"
             "<td>{payback}</td><td>{npv:,.0f}</td><td>{low:,.0f} – {high:,.0f}</td></tr>".format(
-                name=escape(item["name"]),
+                name=escape(title),
                 kwh=result.get("annual_kwh_savings") or 0,
                 therms=result.get("annual_therm_savings") or 0,
                 usd=result.get("annual_cost_savings_usd") or 0,
