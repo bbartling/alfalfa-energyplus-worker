@@ -14,6 +14,7 @@ def utcnow() -> datetime:
 
 class Site(Base):
     __tablename__ = "sites"
+    tenant_id: Mapped[str] = mapped_column(String(80), primary_key=True)
     site_id: Mapped[str] = mapped_column(String(80), primary_key=True)
     timezone: Mapped[str] = mapped_column(String(80))
     latitude: Mapped[float] = mapped_column(Float)
@@ -35,6 +36,7 @@ class ApiKey(Base):
 class Batch(Base):
     __tablename__ = "batches"
     id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(80), index=True)
     site_id: Mapped[str] = mapped_column(String(80), index=True)
     batch_id: Mapped[str] = mapped_column(String(36))
     body_hash: Mapped[str] = mapped_column(String(64))
@@ -42,22 +44,24 @@ class Batch(Base):
     period_end: Mapped[str] = mapped_column(String(40))
     payload: Mapped[dict] = mapped_column(JSON)
     received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    __table_args__ = (UniqueConstraint("site_id", "batch_id"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "site_id", "batch_id"),)
 
 
 class Policy(Base):
     __tablename__ = "policies"
     id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(80), index=True)
     site_id: Mapped[str] = mapped_column(String(80), index=True)
     cadence: Mapped[str] = mapped_column(String(16))
     kind: Mapped[str] = mapped_column(String(32))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    __table_args__ = (UniqueConstraint("site_id", "cadence", "kind"),)
+    __table_args__ = (UniqueConstraint("tenant_id", "site_id", "cadence", "kind"),)
 
 
 class Job(Base):
     __tablename__ = "jobs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(80), index=True)
     site_id: Mapped[str] = mapped_column(String(80), index=True)
     kind: Mapped[str] = mapped_column(String(32))
     status: Mapped[str] = mapped_column(String(16), default="queued")
@@ -71,6 +75,7 @@ class Job(Base):
 class ModelVersion(Base):
     __tablename__ = "model_versions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(80), index=True)
     site_id: Mapped[str] = mapped_column(String(80), index=True)
     status: Mapped[str] = mapped_column(String(16))
     parameters: Mapped[dict] = mapped_column(JSON)
@@ -83,6 +88,7 @@ class ModelVersion(Base):
 class Scenario(Base):
     __tablename__ = "scenarios"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(80), index=True)
     site_id: Mapped[str] = mapped_column(String(80), index=True)
     name: Mapped[str] = mapped_column(String(120))
     model_version_id: Mapped[str] = mapped_column(String(36))
@@ -95,6 +101,7 @@ class Scenario(Base):
 class Webhook(Base):
     __tablename__ = "webhooks"
     id: Mapped[int] = mapped_column(primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(80), index=True)
     url: Mapped[str] = mapped_column(String(300))
     secret: Mapped[str] = mapped_column(String(200))
     events: Mapped[list] = mapped_column(JSON)
@@ -114,3 +121,25 @@ def make_session_factory(engine):
 
 def init_db(engine) -> None:
     Base.metadata.create_all(engine)
+    if engine.dialect.name == "postgresql":
+        _enable_row_security(engine)
+
+
+_TENANT_TABLES = ("sites", "batches", "policies", "jobs", "model_versions", "scenarios", "webhooks")
+
+
+def _enable_row_security(engine) -> None:
+    """Hide other tenants' rows unless the worker role is set for the transaction."""
+    statements = []
+    for table in _TENANT_TABLES:
+        statements.append(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+        statements.append(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
+        statements.append(f"DROP POLICY IF EXISTS tenant_isolation ON {table}")
+        statements.append(
+            f"CREATE POLICY tenant_isolation ON {table} USING ("
+            "current_setting('twin.role', true) = 'worker' "
+            "OR tenant_id = current_setting('twin.tenant_id', true))"
+        )
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.exec_driver_sql(statement)

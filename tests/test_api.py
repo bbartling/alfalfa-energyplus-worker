@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import pytest
 from tools.fdd_sim.synthetic import SITES, batches_for, site_record
 
 
@@ -105,6 +106,7 @@ def test_scheduler_is_idempotent_within_a_month_and_drift_recalibrates(client, a
             session.add(
                 Job(
                     id=f"track-{_}-{spec['site_id']}",
+                    tenant_id="local",
                     site_id=spec["site_id"],
                     kind="tracking",
                     status="completed",
@@ -145,6 +147,7 @@ def test_energyplus_what_if_is_queued_until_the_worker_runs_it(client, auth):
         session.add(
             ModelVersion(
                 id="ep-model",
+                tenant_id="local",
                 site_id=spec["site_id"],
                 status="active",
                 parameters=base_case(),
@@ -172,6 +175,85 @@ def test_energyplus_what_if_is_queued_until_the_worker_runs_it(client, auth):
     assert queued.status_code == 202
     assert queued.json()["kind"] == "energyplus-scenario"
     assert queued.json()["status"] == "queued"
+
+
+def test_a_tenant_star_key_cannot_read_another_tenant(client, auth):
+    import hashlib
+
+    from twin.db import ApiKey
+
+    spec = SITES[0]
+    client.post("/v1/sites", json=site_record(spec), headers=auth)
+    for batch in batches_for(spec, include_incremental=False):
+        client.post(f"/v1/sites/{spec['site_id']}/operations", json=batch, headers=auth)
+    job = client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth)
+    token = "other-tenant-key"
+    with client.app.state.Session() as session:
+        session.add(
+            ApiKey(
+                key_hash=hashlib.sha256(token.encode()).hexdigest(),
+                tenant="other",
+                sites=["*"],
+                label="other",
+            )
+        )
+        session.commit()
+    other = {"Authorization": f"Bearer {token}"}
+    assert client.get(f"/v1/sites/{spec['site_id']}", headers=other).status_code == 404
+    assert client.get(f"/v1/sites/{spec['site_id']}/report", headers=other).status_code == 404
+    assert client.get(f"/v1/jobs/{job.json()['id']}", headers=other).status_code == 404
+    assert client.get("/").text.find(spec["site_id"]) != -1
+    denied = client.get("/", headers=other)
+    assert spec["site_id"] not in denied.text
+
+
+def test_webhook_events_stay_inside_the_tenant(client, auth, monkeypatch):
+    from twin.db import Webhook
+
+    seen = []
+
+    def fake_post(url, **kwargs):
+        seen.append(url)
+
+    monkeypatch.setattr("httpx.post", fake_post)
+    spec = SITES[0]
+    client.post("/v1/sites", json=site_record(spec), headers=auth)
+    for batch in batches_for(spec, include_incremental=False):
+        client.post(f"/v1/sites/{spec['site_id']}/operations", json=batch, headers=auth)
+    registered = client.post(
+        "/v1/webhooks",
+        json={"url": "http://tenant-a.example/hook", "secret": "tenant-a-secret", "events": ["job.completed"]},
+        headers=auth,
+    )
+    assert registered.status_code == 201
+    with client.app.state.Session() as session:
+        session.add(
+            Webhook(
+                tenant_id="other",
+                url="http://tenant-b.example/hook",
+                secret="tenant-b-secret",
+                events=["job.completed"],
+            )
+        )
+        session.commit()
+    assert client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth).status_code == 200
+    assert seen == ["http://tenant-a.example/hook"]
+
+
+def test_prod_refuses_the_demo_key_and_an_open_dashboard(tmp_path):
+    from twin.factory import create_app
+    from twin.settings import Settings
+
+    common = {
+        "database_url": f"sqlite:///{tmp_path}/prod.db",
+        "inline_jobs": True,
+        "alfalfa_url": None,
+        "env": "prod",
+    }
+    with pytest.raises(RuntimeError):
+        create_app(Settings(bootstrap_key="local-demo-key", dashboard_open=False, **common))
+    with pytest.raises(RuntimeError):
+        create_app(Settings(bootstrap_key="x" * 40, dashboard_open=True, **common))
 
 
 def test_live_alfalfa_is_optional(client, auth):

@@ -13,6 +13,7 @@ def client(tmp_path):
             dashboard_open=True,
             inline_jobs=True,
             alfalfa_url=None,
+            env="demo",
         )
     )
     with TestClient(app) as test_client:

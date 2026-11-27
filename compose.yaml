@@ -3,9 +3,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: twin
-      POSTGRES_PASSWORD: twin
-      POSTGRES_DB: twin
+      POSTGRES_USER: ${POSTGRES_USER:-twin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-twin}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U twin -d twin"]
       interval: 2s
@@ -17,9 +17,10 @@ services:
     image: twin:local
     build: .
     environment:
-      DATABASE_URL: postgresql+psycopg://twin:twin@db:5432/twin
-      TWIN_BOOTSTRAP_KEY: ${TWIN_BOOTSTRAP_KEY:-local-demo-key}
-      TWIN_DASHBOARD_OPEN: ${TWIN_DASHBOARD_OPEN:-1}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
+      TWIN_ENV: ${TWIN_ENV:-prod}
+      TWIN_BOOTSTRAP_KEY: ${TWIN_BOOTSTRAP_KEY:-}
+      TWIN_DASHBOARD_OPEN: ${TWIN_DASHBOARD_OPEN:-0}
       TWIN_INLINE_JOBS: "1"
     ports:
       - "127.0.0.1:${TWIN_HTTP_PORT:-18080}:8080"
@@ -39,7 +40,7 @@ services:
     command: ["python", "-m", "tools.fdd_sim"]
     environment:
       TWIN_API_URL: http://api:8080
-      TWIN_API_KEY: ${TWIN_BOOTSTRAP_KEY:-local-demo-key}
+      TWIN_API_KEY: ${TWIN_BOOTSTRAP_KEY:-}
     depends_on:
       api:
         condition: service_healthy
@@ -49,7 +50,7 @@ services:
     build:
       dockerfile: Dockerfile.worker
     environment:
-      DATABASE_URL: postgresql+psycopg://twin:twin@db:5432/twin
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       ENERGYPLUS_BIN: /usr/local/openstudio-3.9.0/EnergyPlus/energyplus
       ENERGYPLUS_WEATHER_DIR: /var/oscli/gems/ruby/3.2.0/gems/openstudio-standards-0.7.0/data/weather
     depends_on:

@@ -73,4 +73,4 @@ Images are pinned to the Alfalfa revision `af3caee`. See [docs/simpler-alternati
 
 ## Security
 
-The quickstart binds `127.0.0.1:18080` only. Set `TWIN_HTTP_PORT` to move it. It does not bind port 80. `TWIN_DASHBOARD_OPEN=1` leaves the HTML reports readable without a key; turn that off before exposing the service. Put your own TLS proxy in front and replace the demo API key. Alfalfa is not authenticated upstream, so leave it on the internal network.
+The quickstart binds `127.0.0.1:18080` only and runs with `TWIN_ENV=demo`. It does not bind port 80. `TWIN_ENV=prod` refuses to start when the bootstrap key is missing, is `local-demo-key`, or is shorter than 32 characters, and it refuses an open dashboard. API keys are tenant scoped: a key sees only its tenant's sites, jobs, and webhooks. Put your own TLS proxy in front. Alfalfa is not authenticated upstream, so leave it on the internal network.

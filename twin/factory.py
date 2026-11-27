@@ -18,6 +18,8 @@ from sqlalchemy.orm import Session
 from twin.dashboard import index_page, site_page
 from twin.db import ApiKey, Job, Policy, Site, Webhook, init_db, make_engine, make_session_factory
 from twin.schemas import ApiKeyIn, OperationsBatch, PolicyIn, ScenarioIn, SiteIn, WebhookIn
+from twin.scope import bind_tenant
+from twin.scope import get_site as lookup_site
 from twin.service import (
     Conflict,
     NotReady,
@@ -43,6 +45,7 @@ class APIError(Exception):
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
+    settings.validate()
     engine = make_engine(settings.database_url)
     _wait_for_database(engine)
     factory = make_session_factory(engine)
@@ -51,7 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.Session = factory
 
     with factory() as session:
-        _ensure_bootstrap(session, settings.bootstrap_key)
+        _ensure_bootstrap(session, settings.bootstrap_key, settings.tenant)
 
     def db():
         with factory() as session:
@@ -64,11 +67,19 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         row = session.get(ApiKey, hashlib.sha256(token.encode()).hexdigest())
         if row is None:
             raise APIError(401, "unknown API key")
+        bind_tenant(session, row.tenant)
         return row
 
     def allow(site_id: str, key: ApiKey):
         if "*" not in key.sites and site_id not in key.sites:
             raise APIError(403, "API key cannot access this site")
+
+    def require_site(session: Session, site_id: str, key: ApiKey) -> Site:
+        allow(site_id, key)
+        site = lookup_site(session, site_id)
+        if site is None or site.tenant_id != key.tenant:
+            raise APIError(404, "unknown site")
+        return site
 
     @app.exception_handler(APIError)
     def on_api_error(_request, exc: APIError):
@@ -86,13 +97,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/", response_class=HTMLResponse)
-    def dashboard(session: Session = Depends(db)):
-        _dashboard_guard()
+    def dashboard(authorization: str | None = Header(default=None), session: Session = Depends(db)):
+        _open_dashboard(authorization, session)
         return index_page(site_cards(session))
 
     @app.get("/sites/{site_id}", response_class=HTMLResponse)
-    def site_dashboard(site_id: str, session: Session = Depends(db)):
-        _dashboard_guard()
+    def site_dashboard(site_id: str, authorization: str | None = Header(default=None), session: Session = Depends(db)):
+        key = _open_dashboard(authorization, session)
+        if key is not None:
+            require_site(session, site_id, key)
         try:
             return site_page(report(session, site_id))
         except NotReady as exc:
@@ -102,17 +115,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def create_site(body: SiteIn, key: ApiKey = Depends(principal), session: Session = Depends(db)):
         if "*" not in key.sites:
             raise APIError(403, "only an unrestricted key can register a site")
-        if session.get(Site, body.site_id) is None:
-            session.add(Site(**body.model_dump()))
+        if lookup_site(session, body.site_id) is None:
+            session.add(Site(tenant_id=key.tenant, **body.model_dump()))
             session.commit()
         return body.model_dump()
 
     @app.get("/v1/sites/{site_id}")
     def get_site(site_id: str, key: ApiKey = Depends(principal), session: Session = Depends(db)):
-        allow(site_id, key)
-        site = session.get(Site, site_id)
-        if site is None:
-            raise APIError(404, "unknown site")
+        site = require_site(session, site_id, key)
         return {
             "site_id": site.site_id,
             "timezone": site.timezone,
@@ -147,11 +157,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/v1/sites/{site_id}/policies", status_code=201)
     def add_policy(site_id: str, body: PolicyIn, key: ApiKey = Depends(principal), session: Session = Depends(db)):
         allow(site_id, key)
+        require_site(session, site_id, key)
         existing = session.scalar(
-            select(Policy).where(Policy.site_id == site_id, Policy.cadence == body.cadence, Policy.kind == body.kind)
+            select(Policy).where(
+                Policy.tenant_id == key.tenant,
+                Policy.site_id == site_id,
+                Policy.cadence == body.cadence,
+                Policy.kind == body.kind,
+            )
         )
         if existing is None:
-            session.add(Policy(site_id=site_id, cadence=body.cadence, kind=body.kind, enabled=True))
+            session.add(Policy(tenant_id=key.tenant, site_id=site_id, cadence=body.cadence, kind=body.kind, enabled=True))
             session.commit()
         return body.model_dump()
 
@@ -196,7 +212,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/v1/jobs/{job_id}")
     def get_job(job_id: str, key: ApiKey = Depends(principal), session: Session = Depends(db)):
         job = session.get(Job, job_id)
-        if job is None:
+        if job is None or job.tenant_id != key.tenant:
             raise APIError(404, "unknown job")
         allow(job.site_id, key)
         return _job_body(job)
@@ -244,22 +260,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def add_webhook(body: WebhookIn, key: ApiKey = Depends(principal), session: Session = Depends(db)):
         if "*" not in key.sites:
             raise APIError(403, "only an unrestricted key can register webhooks")
-        session.add(Webhook(url=body.url, secret=body.secret, events=body.events))
+        session.add(Webhook(tenant_id=key.tenant, url=body.url, secret=body.secret, events=body.events))
         session.commit()
         return {"status": "registered"}
 
     @app.post("/v1/sites/{site_id}/live-runs")
     def live_run(site_id: str, key: ApiKey = Depends(principal), session: Session = Depends(db)):
         allow(site_id, key)
-        if session.get(Site, site_id) is None:
-            raise APIError(404, "unknown site")
+        require_site(session, site_id, key)
         if not settings.alfalfa_url:
             raise APIError(409, "Alfalfa is not configured. Batch calibration and scenarios do not need it.")
         return {"alfalfa_url": settings.alfalfa_url, "status": "not-started"}
 
-    def _dashboard_guard():
-        if not settings.dashboard_open:
-            raise APIError(401, "dashboard is closed")
+    def _open_dashboard(authorization: str | None, session: Session):
+        if authorization:
+            return principal(authorization, session)
+        if settings.env == "demo" and settings.dashboard_open:
+            bind_tenant(session, settings.tenant)
+            return None
+        raise APIError(401, "dashboard is closed")
 
     def _accept(site_id: str, body: OperationsBatch, session: Session):
         if body.site_id != site_id:
@@ -275,7 +294,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         event = "job.completed" if job.status == "completed" else "calibration.failed"
         payload = {"event": event, "job": _job_body(job)}
         body = json.dumps(payload).encode()
-        hooks = session.scalars(select(Webhook)).all()
+        hooks = session.scalars(select(Webhook).where(Webhook.tenant_id == job.tenant_id)).all()
         for hook in hooks:
             if event not in hook.events:
                 continue
@@ -313,10 +332,10 @@ def _wait_for_database(engine) -> None:
         raise last_error
 
 
-def _ensure_bootstrap(session: Session, token: str) -> None:
+def _ensure_bootstrap(session: Session, token: str, tenant: str) -> None:
     digest = hashlib.sha256(token.encode()).hexdigest()
     if session.get(ApiKey, digest) is None:
-        session.add(ApiKey(key_hash=digest, tenant="local", sites=["*"], label="bootstrap"))
+        session.add(ApiKey(key_hash=digest, tenant=tenant, sites=["*"], label="bootstrap"))
         session.commit()
 
 
