@@ -39,6 +39,8 @@ class SiteIn(StrictModel):
     longitude: float = Field(ge=-180, le=180)
     floor_area_m2: float = Field(gt=0, le=1_000_000)
     building_type: str = Field(min_length=1, max_length=80)
+    heating_fuel: Literal["gas", "electric", "heat_pump"] = "heat_pump"
+    system_type: str = Field(default="psz-ac", min_length=1, max_length=40)
     weather_station: str | None = None
 
     @field_validator("timezone")

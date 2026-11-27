@@ -21,6 +21,8 @@ class Site(Base):
     longitude: Mapped[float] = mapped_column(Float)
     floor_area_m2: Mapped[float] = mapped_column(Float)
     building_type: Mapped[str] = mapped_column(String(80))
+    heating_fuel: Mapped[str] = mapped_column(String(20), default="heat_pump")
+    system_type: Mapped[str] = mapped_column(String(40), default="psz-ac")
     weather_station: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

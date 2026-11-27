@@ -272,7 +272,7 @@ def _payloads(session: Session, site_id: str) -> list[dict]:
 def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> dict:
     """Batch EnergyPlus calibration. This is the long job, not the quick estimate."""
     from twin.eplus import simulate
-    from twin.eplus_calibrate import conditions_from_payloads, fit
+    from twin.eplus_calibrate import conditions_from_payloads, fit, prototype_match
     from twin.weather import nearest_station
 
     site = get_site(session, site_id)
@@ -286,8 +286,13 @@ def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> 
     def run_fn(case: dict, run_span: str) -> dict:
         return simulate(case, weather, run_span)
 
+    mismatch = prototype_match(site)
+    if mismatch:
+        raise NotReady(mismatch)
+    base = conditions_from_payloads(payloads)
+    base["heating_fuel"] = site.heating_fuel
     try:
-        fitted = fit(conditions_from_payloads(payloads), months, site.floor_area_m2, run_fn, span=span)
+        fitted = fit(base, months, site.floor_area_m2, run_fn, span=span)
     except ValueError as exc:
         raise NotReady(str(exc)) from exc
     fitted["engine"]["weather"] = weather

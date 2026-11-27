@@ -131,6 +131,16 @@ def test_scheduler_is_idempotent_within_a_month_and_drift_recalibrates(client, a
     assert any(job["spec"].get("reason") == "drift" for job in drifted["jobs"])
 
 
+def test_energyplus_rejects_a_building_the_prototype_does_not_represent(client, auth):
+    spec = SITES[1]
+    client.post("/v1/sites", json=site_record(spec), headers=auth)
+    rejected = client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth, params={"engine": "energyplus"})
+    assert rejected.status_code == 422
+    other = site_record(SITES[0]) | {"site_id": "site-vav", "system_type": "vav"}
+    client.post("/v1/sites", json=other, headers=auth)
+    assert client.post("/v1/sites/site-vav/calibrations", headers=auth, params={"engine": "energyplus"}).status_code == 422
+
+
 def test_energyplus_calibration_is_queued_for_the_worker(client, auth):
     spec = SITES[0]
     client.post("/v1/sites", json=site_record(spec), headers=auth)

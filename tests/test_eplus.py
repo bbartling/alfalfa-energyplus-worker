@@ -91,6 +91,28 @@ def test_case_is_written_into_the_prototype():
     assert float(heating_day[5]) == pytest.approx(float(expected[5]))
 
 
+def test_heat_pump_writes_heating_cop_and_gas_locks_the_compressor_out():
+    heat_pump = parse_idf(apply_case(load_model(), base_case(heating_fuel="heat_pump", heating_cop=2.5), "smoke"))
+    dx = next(obj for obj in heat_pump if obj[0] == "Coil:Heating:DX:SingleSpeed")
+    assert float(dx[4]) == 2.5
+    gas = parse_idf(apply_case(load_model(), base_case(heating_fuel="gas"), "smoke"))
+    locked = next(obj for obj in gas if obj[0] == "Coil:Heating:DX:SingleSpeed")
+    unitary = next(obj for obj in gas if obj[0] == "AirLoopHVAC:UnitarySystem")
+    fuel = next(obj for obj in gas if obj[0] == "Coil:Heating:Fuel")
+    assert "99" in locked
+    assert "50" in unitary
+    assert fuel[3] == "NaturalGas"
+    electric = parse_idf(apply_case(load_model(), base_case(heating_fuel="electric"), "smoke"))
+    assert next(obj for obj in electric if obj[0] == "Coil:Heating:Fuel")[3] == "Electricity"
+
+
+def test_heat_pump_sweep_adds_heating_cop():
+    from twin.eplus_calibrate import coarse_cases
+
+    assert len(coarse_cases(base_case())) == 64
+    assert len(coarse_cases(base_case(heating_fuel="heat_pump"))) == 128
+
+
 def test_coarse_grid_then_refinement_recovers_the_better_lighting_level():
     months = [
         {"start": f"2026-0{month}-01T00:00:00+00:00", "electric_kwh": 100.0, "gas_therms": None}

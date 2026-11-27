@@ -19,8 +19,9 @@ COARSE = {
     "cooling_cop": (3.0, 4.2),
     "infiltration_multiplier": (0.7, 1.4),
     "setpoint_offset_c": (-1.0, 1.0),
+    "heating_cop": (2.5, 3.8),
 }
-SWEEP_KEYS = tuple(COARSE)
+SWEEP_KEYS = tuple(key for key in COARSE if key != "heating_cop")
 
 
 def base_case(**overrides) -> dict:
@@ -72,8 +73,14 @@ def conditions_from_payloads(payloads: list[dict]) -> dict:
     return case
 
 
+def sweep_keys(base: dict) -> tuple[str, ...]:
+    if base.get("heating_fuel") == "heat_pump":
+        return (*SWEEP_KEYS, "heating_cop")
+    return SWEEP_KEYS
+
+
 def coarse_cases(base: dict) -> list[dict]:
-    keys = SWEEP_KEYS
+    keys = sweep_keys(base)
     cases = []
     for values in product(*(COARSE[key] for key in keys)):
         updated = dict(base)
@@ -85,7 +92,7 @@ def coarse_cases(base: dict) -> list[dict]:
 def refine_cases(best: dict, seen: set[tuple]) -> list[dict]:
     """One half-step either side of the best coarse point, per parameter."""
     extra = []
-    for key in SWEEP_KEYS:
+    for key in sweep_keys(best):
         step = _half_step(COARSE[key])
         if step == 0:
             continue
@@ -291,8 +298,17 @@ def _half_step(values: tuple[float, ...]) -> float:
     return abs(values[1] - values[0]) / 2
 
 
+def prototype_match(site) -> str | None:
+    """422 detail when this site cannot use the checked-in small-office RTU."""
+    if site.building_type != "small-office" or site.system_type != "psz-ac":
+        return "EnergyPlus v1 is a small-office packaged RTU (psz-ac)"
+    if site.heating_fuel not in {"gas", "electric", "heat_pump"}:
+        return "heating_fuel must be gas, electric, or heat_pump"
+    return None
+
+
 def _identity(case: dict) -> tuple:
-    return tuple(round(float(case[key]), 6) for key in SWEEP_KEYS)
+    return tuple(round(float(case[key]), 6) for key in sweep_keys(case))
 
 
 def _setpoints(payloads: list[dict], kind: str, period: str) -> list[float]:
