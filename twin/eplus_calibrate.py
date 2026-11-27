@@ -314,9 +314,21 @@ def _identity(case: dict) -> tuple:
 def _setpoints(payloads: list[dict], kind: str, period: str) -> list[float]:
     found = []
     for payload in payloads:
-        for item in payload.get("setpoints") or []:
-            if item.get("kind") == kind and item.get("period") == period:
-                found.append(float(item["value"]))
+        points = payload.get("setpoints") or []
+        actual = [
+            item
+            for item in points
+            if item.get("kind") == kind and item.get("source") == "actual" and item.get("period") in {period, "always"}
+        ]
+        if actual:
+            found.extend(float(item["value"]) for item in actual)
+            continue
+        for item in points:
+            if item.get("kind") != kind or item.get("period") != period:
+                continue
+            if item.get("source") == "inferred" and (item.get("confidence") or 0) < 0.6:
+                continue
+            found.append(float(item["value"]))
     return found
 
 

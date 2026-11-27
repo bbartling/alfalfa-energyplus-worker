@@ -68,12 +68,11 @@ Setpoint kinds: `supply_air_temp` (°C), `duct_static` (Pa), `zone_heating`, `zo
 
 If a setpoint is omitted, it is inferred and stored with `source=inferred`, a `method`, and `confidence` in `[0, 1]`:
 
-- Steady-state percentile (`steady-state-percentile`): mean of samples between the 10th and 90th percentiles. Used for supply air temperature, duct static, and chilled or hot water temperature.
-- Deadband percentile (`deadband-percentile`): 10th percentile is the heating setpoint and 90th is the cooling setpoint, checked against the lower and upper quartile means. Occupied and unoccupied samples are inferred separately. A deadband that is not plausible lowers the confidence.
+Sensors are quantile summaries, not sample arrays: `{n, hours, p05, p10, p25, p50, p75, p90, p95}` for each mode. A zone heating setpoint is the upper quantile (`p90`) of `heating_active` hours, and a cooling setpoint is the lower quantile (`p10`) of `cooling_active` hours. A mode with fewer than 8 hours is not emitted. Two supply-air modes are stored as `method=reset` with both values, not their mean. Confidence below 0.6 is dropped and the prototype default is used.
 
-An `source=actual` value is never replaced. Extra sensor samples for that point are ignored.
+An `source=actual` value for a kind wins over an inferred value for every period, including `always`. Request bodies larger than 1 MB are rejected.
 
-Meters are monthly totals, with optional daily or hourly rows. If a monthly row is present it is the total; otherwise finer rows are summed. Electricity is kWh. Gas is therm. Weather is a period summary (mean dry-bulb, HDD and CDD base 18 °C) plus the site location from registration.
+Meters are monthly totals, with optional daily or hourly rows. If a monthly row is present it is the total; otherwise finer rows are summed. Electricity is kWh. Gas is accepted as therm, kWh, or m³ and stored as therm. Weather is a period summary (mean dry-bulb, HDD and CDD base 18 °C) plus the site location from registration.
 
 `GET /v1/sites/{site_id}/coverage?start=&end=` lists missing months.
 

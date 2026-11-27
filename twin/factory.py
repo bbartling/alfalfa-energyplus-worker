@@ -50,6 +50,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     _wait_for_database(engine)
     factory = make_session_factory(engine)
     app = FastAPI(title="Building twin", version="1.0.0", docs_url="/docs")
+
+    @app.middleware("http")
+    async def limit_body(request, call_next):
+        length = request.headers.get("content-length")
+        if length and length.isdigit() and int(length) > 1_000_000:
+            return _problem(413, "request body is larger than 1 MB")
+        return await call_next(request)
     app.state.settings = settings
     app.state.Session = factory
 

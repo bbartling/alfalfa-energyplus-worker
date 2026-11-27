@@ -25,6 +25,7 @@ class Inferred:
     value: float
     confidence: float
     method: str
+    modes: tuple[float, ...] | None = None
 
 
 def percentile(values: list[float], pct: float) -> float:
@@ -62,6 +63,33 @@ def infer_steady(samples: list[float]) -> Inferred:
     agreement = abs(value - median) <= max(0.3, scale)
     plausible = spread <= scale
     return Inferred(round(value, 3), _confidence(len(samples), spread, agreement, plausible, scale), "steady-state-percentile")
+
+
+MIN_MODE_HOURS = 8
+CONFIDENCE_FLOOR = 0.6
+
+
+def infer_quantile(summary: dict, *, upper: bool) -> Inferred:
+    """Heating uses the upper quantile of heating-active hours. Cooling uses the lower quantile."""
+    if summary["hours"] < MIN_MODE_HOURS and summary["n"] < MIN_SAMPLES:
+        raise ValueError("mode was not active long enough")
+    value = summary["p90"] if upper else summary["p10"]
+    spread = abs(summary["p95"] - summary["p05"])
+    plausible = spread <= 3.0
+    agreement = abs(summary["p50"] - value) <= 1.5
+    return Inferred(
+        round(float(value), 3),
+        _confidence(int(summary["n"]), spread, agreement, plausible, 2.0),
+        "mode-quantile",
+    )
+
+
+def infer_reset(modes: list[dict]) -> Inferred:
+    centers = [float(mode["p50"]) for mode in modes]
+    spread = max(centers) - min(centers) if centers else 0.0
+    confidence = _confidence(sum(int(mode["n"]) for mode in modes), spread, True, spread >= 1.0, scale=4.0)
+    ordered = tuple(round(value, 3) for value in sorted(centers))
+    return Inferred(ordered[0], confidence, "reset", ordered)
 
 
 def infer_zone(samples: list[float], *, unoccupied: bool = False) -> tuple[Inferred, Inferred]:
