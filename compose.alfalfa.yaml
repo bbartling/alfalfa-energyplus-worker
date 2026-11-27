@@ -1,3 +1,6 @@
+# Optional unmodified Alfalfa stack. No host ports: a reverse proxy is not
+# required, and nothing here binds port 80. The twin product does not use this
+# file. See README.
 include:
   - path:
       - ./_alfalfa_upstream/docker-compose.yml
@@ -10,32 +13,35 @@ services:
       context: .
       dockerfile: Dockerfile.integration
     env_file: ./_alfalfa_upstream/.env
-    extra_hosts:
-      - "kubernetes.docker.internal:host-gateway"
     volumes:
       - ./_alfalfa_upstream/tests:/alfalfa/tests:ro
-    command: ["python3", "-m", "pytest", "-c", "/dev/null", "--rootdir=/alfalfa", "-o", "markers=integration:upstream integration tests", "-v", "--host", "http://web", "tests/integration/test_schedule_override.py", "tests/integration/test_small_office_osw.py::test_io_enable_disable"]
+    command:
+      - python3
+      - -m
+      - pytest
+      - -c
+      - /dev/null
+      - --rootdir=/alfalfa
+      - -o
+      - markers=integration:upstream integration tests
+      - -v
+      - --host
+      - http://web
+      - tests/integration/test_schedule_override.py
+      - tests/integration/test_small_office_osw.py::test_io_enable_disable
   telemetry:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "127.0.0.1:8088:8080"
     environment:
       ALFALFA_URL: http://web
       ALFALFA_MODEL: /models/schedule_model
-    extra_hosts:
-      - "kubernetes.docker.internal:host-gateway"
+      TWIN_DATA: /data
     volumes:
       - twin-data:/data
       - ./_alfalfa_upstream/tests/integration/models:/models:ro
     depends_on:
       - web
     init: true
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
-      interval: 10s
-      timeout: 3s
-      retries: 6
 volumes:
   twin-data:

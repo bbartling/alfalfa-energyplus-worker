@@ -6,8 +6,8 @@ import tarfile
 from datetime import timedelta
 from pathlib import Path
 
-from alfalfa_client.alfalfa_client import AlfalfaClient
 import requests
+from alfalfa_client.alfalfa_client import AlfalfaClient
 
 
 def write_json(path, value):
