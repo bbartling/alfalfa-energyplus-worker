@@ -14,6 +14,8 @@ alfalfa:
 	bash scripts/launch.sh up
 
 quickstart:
+	TWIN_ENV=demo TWIN_BOOTSTRAP_KEY=local-demo-key TWIN_DASHBOARD_OPEN=1 \
+	POSTGRES_PASSWORD=twin DATABASE_URL=postgresql+psycopg://twin:twin@db:5432/twin \
 	docker compose --profile demo up --build -d
 	@echo "Dashboard: http://127.0.0.1:$${TWIN_HTTP_PORT:-18080}"
 

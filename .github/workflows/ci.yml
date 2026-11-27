@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Quickstart smoke
-        run: docker compose --profile demo up --build --abort-on-container-exit --exit-code-from poster
+        run: TWIN_ENV=demo TWIN_BOOTSTRAP_KEY=local-demo-key TWIN_DASHBOARD_OPEN=1 POSTGRES_PASSWORD=twin DATABASE_URL=postgresql+psycopg://twin:twin@db:5432/twin docker compose --profile demo up --build --abort-on-container-exit --exit-code-from poster
       - name: Alfalfa compose renders an in-network S3 endpoint
         run: bash scripts/launch.sh config
 

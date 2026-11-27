@@ -8,6 +8,9 @@ def test_quickstart_does_not_bind_port_80():
     assert "127.0.0.1" in text
     assert "80:80" not in text
     assert "18080" in text
+    assert "local-demo-key" not in text
+    assert "TWIN_DASHBOARD_OPEN:-0" in text or "TWIN_DASHBOARD_OPEN:-0}" in text
+    assert "TWIN_ENV:-prod" in text
 
 
 def test_s3_endpoint_is_portable_and_alfalfa_has_no_host_ports():

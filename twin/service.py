@@ -16,6 +16,7 @@ from twin.energy import Params, predict, search
 from twin.guideline14 import assess
 from twin.infer import infer_steady, infer_zone
 from twin.schemas import UNITS, OperationsBatch
+from twin.scope import current_tenant, get_site
 
 DAY_WEIGHT = {
     "weekday": 5 / 7,
@@ -97,13 +98,17 @@ def _add_setpoint(data, existing, equipment_id, kind, period, inferred) -> None:
 
 
 def store_batch(session: Session, batch: OperationsBatch) -> dict:
-    site = session.get(Site, batch.site_id)
+    site = get_site(session, batch.site_id)
     if site is None:
         raise NotReady("unknown site")
     raw = batch.model_dump(mode="json")
     digest = canonical_hash(raw)
     existing = session.scalar(
-        select(Batch).where(Batch.site_id == batch.site_id, Batch.batch_id == str(batch.batch_id))
+        select(Batch).where(
+            Batch.tenant_id == current_tenant(session),
+            Batch.site_id == batch.site_id,
+            Batch.batch_id == str(batch.batch_id),
+        )
     )
     if existing is not None:
         if existing.body_hash != digest:
@@ -111,6 +116,7 @@ def store_batch(session: Session, batch: OperationsBatch) -> dict:
         return {"batch_id": existing.batch_id, "duplicate": True, "payload": existing.payload}
     normalized = apply_inference(batch).model_dump(mode="json")
     row = Batch(
+        tenant_id=current_tenant(session),
         site_id=batch.site_id,
         batch_id=str(batch.batch_id),
         body_hash=digest,
@@ -124,7 +130,9 @@ def store_batch(session: Session, batch: OperationsBatch) -> dict:
 
 
 def coverage(session: Session, site_id: str, start: datetime, end: datetime) -> dict:
-    rows = session.scalars(select(Batch).where(Batch.site_id == site_id)).all()
+    rows = session.scalars(
+        select(Batch).where(Batch.tenant_id == current_tenant(session), Batch.site_id == site_id)
+    ).all()
     present = sorted({row.period_start[:7] for row in rows})
     missing = []
     cursor = datetime(start.year, start.month, 1, tzinfo=timezone.utc)
@@ -140,6 +148,7 @@ def coverage(session: Session, site_id: str, start: datetime, end: datetime) -> 
 def create_job(session: Session, site_id: str, kind: str, spec: dict, created_at: datetime | None = None) -> Job:
     job = Job(
         id=str(uuid4()),
+        tenant_id=current_tenant(session),
         site_id=site_id,
         kind=kind,
         status="queued",
@@ -178,7 +187,7 @@ def execute(session: Session, job: Job) -> Job:
 
 
 def calibrate(session: Session, site_id: str) -> dict:
-    site = session.get(Site, site_id)
+    site = get_site(session, site_id)
     if site is None:
         raise NotReady("unknown site")
     months = usable_months(session, site_id)
@@ -211,11 +220,17 @@ def calibrate(session: Session, site_id: str) -> dict:
 
 
 def _save_model(session, site_id, promoted, parameters, ensemble, metrics, engine, runs) -> dict:
-    for prior in session.scalars(select(ModelVersion).where(ModelVersion.site_id == site_id, ModelVersion.status == "active")):
+    tenant = current_tenant(session)
+    for prior in session.scalars(
+        select(ModelVersion).where(
+            ModelVersion.tenant_id == tenant, ModelVersion.site_id == site_id, ModelVersion.status == "active"
+        )
+    ):
         if promoted:
             prior.status = "retired"
     version = ModelVersion(
         id=str(uuid4()),
+        tenant_id=tenant,
         site_id=site_id,
         status="active" if promoted else "candidate",
         parameters=parameters,
@@ -238,7 +253,9 @@ def _save_model(session, site_id, promoted, parameters, ensemble, metrics, engin
 
 
 def _payloads(session: Session, site_id: str) -> list[dict]:
-    rows = session.scalars(select(Batch).where(Batch.site_id == site_id).order_by(Batch.period_start)).all()
+    rows = session.scalars(
+        select(Batch).where(Batch.tenant_id == current_tenant(session), Batch.site_id == site_id).order_by(Batch.period_start)
+    ).all()
     return [row.payload for row in rows]
 
 
@@ -253,7 +270,7 @@ def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> 
     from twin.eplus import simulate, weather_file
     from twin.eplus_calibrate import conditions_from_payloads, fit
 
-    site = session.get(Site, site_id)
+    site = get_site(session, site_id)
     if site is None:
         raise NotReady("unknown site")
     months = usable_months(session, site_id)
@@ -296,7 +313,7 @@ def track(session: Session, site_id: str) -> dict:
     if len(window) < 2:
         raise NotReady("not enough months to track")
     params = Params(**version.parameters)
-    metrics = _split_metrics(params, window, session.get(Site, site_id).floor_area_m2, "tracking")
+    metrics = _split_metrics(params, window, get_site(session, site_id).floor_area_m2, "tracking")
     return {"model_version_id": version.id, "metrics": metrics}
 
 
@@ -304,7 +321,7 @@ def run_scenario(session: Session, site_id: str, name: str, measures: list[dict]
     version = active_version(session, site_id)
     if version is None:
         raise NotReady("no active model for a what-if")
-    area = session.get(Site, site_id).floor_area_m2
+    area = get_site(session, site_id).floor_area_m2
     if version.engine.get("name") == "energyplus":
         result = _price_energyplus(session, site_id, version, measures, costs)
     else:
@@ -317,6 +334,7 @@ def run_scenario(session: Session, site_id: str, name: str, measures: list[dict]
         result["label"] = "quick estimate"
     scenario = Scenario(
         id=str(uuid4()),
+        tenant_id=current_tenant(session),
         site_id=site_id,
         name=name,
         model_version_id=version.id,
@@ -358,7 +376,7 @@ def _price_energyplus(session: Session, site_id: str, version: ModelVersion, mea
     from twin.eplus import simulate, weather_file
     from twin.eplus_calibrate import price_energyplus
 
-    site = session.get(Site, site_id)
+    site = get_site(session, site_id)
     weather = weather_file(site.latitude)
 
     def run_fn(case: dict, span: str) -> dict:
@@ -376,7 +394,8 @@ def net_present_value(initial: float, annual: float, rate: float, years: int) ->
 
 def tick(session: Session, now: datetime) -> list[Job]:
     created: list[Job] = []
-    policies = session.scalars(select(Policy).where(Policy.enabled.is_(True))).all()
+    tenant = current_tenant(session)
+    policies = session.scalars(select(Policy).where(Policy.tenant_id == tenant, Policy.enabled.is_(True))).all()
     for policy in policies:
         since = _month_start(now) if policy.cadence == "monthly" else now - timedelta(days=7)
         if _recent_job(session, policy.site_id, policy.kind, since):
@@ -384,7 +403,9 @@ def tick(session: Session, now: datetime) -> list[Job]:
         created.append(create_job(session, policy.site_id, policy.kind, {"reason": policy.cadence}, created_at=now))
     watched = {policy.site_id for policy in policies}
     watched.update(
-        session.scalars(select(Job.site_id).where(Job.kind == "tracking", Job.status == "completed")).all()
+        session.scalars(
+            select(Job.site_id).where(Job.tenant_id == tenant, Job.kind == "tracking", Job.status == "completed")
+        ).all()
     )
     for site_id in sorted(watched):
         if not is_drifting(session, site_id):
@@ -399,7 +420,12 @@ def tick(session: Session, now: datetime) -> list[Job]:
 def is_drifting(session: Session, site_id: str) -> bool:
     jobs = session.scalars(
         select(Job)
-        .where(Job.site_id == site_id, Job.kind == "tracking", Job.status == "completed")
+        .where(
+            Job.tenant_id == current_tenant(session),
+            Job.site_id == site_id,
+            Job.kind == "tracking",
+            Job.status == "completed",
+        )
         .order_by(Job.created_at.desc())
     ).all()
     recent = list(jobs)[:2]
@@ -409,7 +435,9 @@ def is_drifting(session: Session, site_id: str) -> bool:
 
 
 def usable_months(session: Session, site_id: str) -> list[dict]:
-    rows = session.scalars(select(Batch).where(Batch.site_id == site_id)).all()
+    rows = session.scalars(
+        select(Batch).where(Batch.tenant_id == current_tenant(session), Batch.site_id == site_id)
+    ).all()
     months = []
     for row in rows:
         month = month_from_payload(row.payload)
@@ -450,14 +478,21 @@ def month_from_payload(payload: dict) -> dict:
 
 
 def report(session: Session, site_id: str) -> dict:
-    site = session.get(Site, site_id)
+    site = get_site(session, site_id)
     if site is None:
         raise NotReady("unknown site")
     version = session.scalars(
-        select(ModelVersion).where(ModelVersion.site_id == site_id).order_by(ModelVersion.created_at.desc())
+        select(ModelVersion)
+        .where(ModelVersion.tenant_id == current_tenant(session), ModelVersion.site_id == site_id)
+        .order_by(ModelVersion.created_at.desc())
     ).first()
-    scenarios = session.scalars(select(Scenario).where(Scenario.site_id == site_id).order_by(Scenario.created_at)).all()
-    batches = session.scalars(select(Batch).where(Batch.site_id == site_id).order_by(Batch.period_start)).all()
+    tenant = current_tenant(session)
+    scenarios = session.scalars(
+        select(Scenario).where(Scenario.tenant_id == tenant, Scenario.site_id == site_id).order_by(Scenario.created_at)
+    ).all()
+    batches = session.scalars(
+        select(Batch).where(Batch.tenant_id == tenant, Batch.site_id == site_id).order_by(Batch.period_start)
+    ).all()
     setpoints = batches[-1].payload.get("setpoints", []) if batches else []
     calibration = None
     if version is not None:
@@ -487,7 +522,7 @@ def report(session: Session, site_id: str) -> dict:
 
 def site_cards(session: Session) -> list[dict]:
     cards = []
-    for site in session.scalars(select(Site).order_by(Site.site_id)).all():
+    for site in session.scalars(select(Site).where(Site.tenant_id == current_tenant(session)).order_by(Site.site_id)).all():
         item = report(session, site.site_id)
         metric = _headline(None if item["calibration"] is None else item["calibration"]["metrics"])
         cards.append(
@@ -621,7 +656,9 @@ def _add_month(value: datetime) -> datetime:
 
 
 def _recent_job(session: Session, site_id: str, kind: str, since: datetime) -> bool:
-    jobs = session.scalars(select(Job).where(Job.site_id == site_id, Job.kind == kind)).all()
+    jobs = session.scalars(
+        select(Job).where(Job.tenant_id == current_tenant(session), Job.site_id == site_id, Job.kind == kind)
+    ).all()
     for job in jobs:
         created = job.created_at
         if created.tzinfo is None:
@@ -637,4 +674,10 @@ def _cv_above(job: Job, limit: float) -> bool:
 
 
 def active_version(session: Session, site_id: str) -> ModelVersion | None:
-    return session.scalar(select(ModelVersion).where(ModelVersion.site_id == site_id, ModelVersion.status == "active"))
+    return session.scalar(
+        select(ModelVersion).where(
+            ModelVersion.tenant_id == current_tenant(session),
+            ModelVersion.site_id == site_id,
+            ModelVersion.status == "active",
+        )
+    )
