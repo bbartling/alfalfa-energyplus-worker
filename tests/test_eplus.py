@@ -2,6 +2,7 @@ import pytest
 from twin.eplus import monthly_energy, weather_file
 from twin.eplus_calibrate import apply_measures, base_case, conditions_from_payloads, fit, price_energyplus
 from twin.idfedit import MODEL_AREA_M2, apply_case, load_model, parse_idf
+from twin.weather import nearest_station
 
 
 def test_summaries_set_the_occupied_window_and_setpoints():
@@ -78,6 +79,16 @@ def test_case_is_written_into_the_prototype():
     assert weekend[4:] == ["24:00", "15.6"]
     assert design[4:] == original_design[4:]
     assert not any(obj[0] == "RunPeriodControl:DaylightSavingTime" for obj in edited)
+    denver = nearest_station(39.74, -104.99)
+    located = parse_idf(apply_case(load_model(), case, "smoke", station=denver))
+    location = next(obj for obj in located if obj[0] == "Site:Location")
+    heating_day = next(obj for obj in located if obj[0] == "SizingPeriod:DesignDay" and obj[4] == "WinterDesignDay")
+    assert location[1] == denver["city"]
+    assert float(location[2]) == pytest.approx(denver["latitude"])
+    assert "Denver" in denver["file"]
+    assert denver["weather_kind"] == "tmy3"
+    expected = next(day for day in denver["design_days"] if day[4] == "WinterDesignDay")
+    assert float(heating_day[5]) == pytest.approx(float(expected[5]))
 
 
 def test_coarse_grid_then_refinement_recovers_the_better_lighting_level():
@@ -160,6 +171,8 @@ def test_what_if_reruns_the_calibrated_energyplus_case():
 
 
 def test_weather_file_follows_latitude():
-    assert weather_file(41).startswith("USA_IL_Chicago")
-    assert weather_file(39.7).startswith("USA_MD_Baltimore")
-    assert "Miami" in weather_file(25)
+    assert weather_file(41.98, -87.92).startswith("USA_IL_Chicago")
+    assert weather_file(39.17, -76.67).startswith("USA_MD_Baltimore")
+    assert "Miami" in weather_file(25.8, -80.3)
+    denver = weather_file(39.74, -104.99)
+    assert "Denver" in denver and "Baltimore" not in denver

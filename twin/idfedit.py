@@ -56,7 +56,7 @@ def load_model() -> list[list[str]]:
     return parse_idf(MODEL_PATH.read_text())
 
 
-def apply_case(objects: list[list[str]], case: dict, span: str) -> str:
+def apply_case(objects: list[list[str]], case: dict, span: str, station: dict | None = None) -> str:
     """Map one sweep point and the summary schedule onto a copy of the IDF."""
     edited = [list(obj) for obj in objects if obj[0] != "RunPeriodControl:DaylightSavingTime"]
     heating = case["heating_setpoint_c"] + case["setpoint_offset_c"]
@@ -89,6 +89,8 @@ def apply_case(objects: list[list[str]], case: dict, span: str) -> str:
             obj[5] = str(end_month)
             obj[6] = str(end_day)
             obj[7] = "2006"
+    if station is not None:
+        _apply_station(edited, station)
     return write_idf(edited)
 
 
@@ -99,6 +101,20 @@ _INFILTRATION_FIELD = {
     "Flow/ExteriorWallArea": 7,
     "AirChanges/Hour": 8,
 }
+
+
+def _apply_station(objects: list[list[str]], station: dict) -> None:
+    """Point location and design days at the selected station. The file stays a TMY."""
+    objects[:] = [obj for obj in objects if obj[0] != "SizingPeriod:DesignDay"]
+    for obj in objects:
+        if obj[0] == "Site:Location" and len(obj) > 5:
+            obj[1] = station["city"]
+            obj[2] = _num(station["latitude"])
+            obj[3] = _num(station["longitude"])
+            obj[4] = _num(station["time_zone"])
+            obj[5] = _num(station["elevation_m"])
+    for day in station.get("design_days") or []:
+        objects.append(list(day))
 
 
 def _method(obj: list[str]) -> str:
