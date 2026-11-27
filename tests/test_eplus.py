@@ -115,8 +115,8 @@ def test_heat_pump_sweep_adds_heating_cop():
 
 def test_coarse_grid_then_refinement_recovers_the_better_lighting_level():
     months = [
-        {"start": f"2026-0{month}-01T00:00:00+00:00", "electric_kwh": 100.0, "gas_therms": None}
-        for month in range(1, 5)
+        {"start": f"2025-{month:02d}-01T00:00:00+00:00", "electric_kwh": 100.0, "gas_therms": None}
+        for month in range(1, 13)
     ]
 
     def run_fn(case, _span):
@@ -127,9 +127,26 @@ def test_coarse_grid_then_refinement_recovers_the_better_lighting_level():
     assert fitted["runs"] == 76
     assert fitted["parameters"]["lighting_w_m2"] == 10
     assert fitted["decision"] == "promoted"
+    assert fitted["engine"]["n_tuned_parameters"] == 6
+    assert any(item["split"] == "loocv" and item["claim"] == "diagnostic" for item in fitted["metrics"])
+    assert all(item["claim"] == "guideline14" for item in fitted["metrics"] if item["split"] == "all")
     assert fitted["engine"]["name"] == "energyplus"
     assert fitted["engine"]["openstudio"] == "3.9.0"
-    assert all(item["pass"] for item in fitted["metrics"])
+    assert all(item["pass"] for item in fitted["metrics"] if item["claim"] == "guideline14")
+
+
+def test_fewer_than_twelve_months_is_not_a_guideline_14_claim():
+    months = [
+        {"start": f"2026-0{month}-01T00:00:00+00:00", "electric_kwh": 100.0, "gas_therms": None}
+        for month in range(1, 5)
+    ]
+
+    def run_fn(_case, _span):
+        return {"electric": {month: 100.0 for month in range(1, 13)}, "gas": {}}
+
+    fitted = fit(base_case(), months, MODEL_AREA_M2, run_fn)
+    assert fitted["decision"] == "insufficient-data"
+    assert all(item["claim"] == "insufficient-data" for item in fitted["metrics"] if item["split"] == "all")
 
 
 def test_monthly_energy_reads_facility_meters_when_warmup_is_null(tmp_path):

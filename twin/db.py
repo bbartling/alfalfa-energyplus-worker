@@ -20,6 +20,7 @@ class Site(Base):
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     floor_area_m2: Mapped[float] = mapped_column(Float)
+    stories: Mapped[int] = mapped_column(default=1)
     building_type: Mapped[str] = mapped_column(String(80))
     heating_fuel: Mapped[str] = mapped_column(String(20), default="heat_pump")
     system_type: Mapped[str] = mapped_column(String(40), default="psz-ac")

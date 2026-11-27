@@ -38,6 +38,7 @@ class SiteIn(StrictModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     floor_area_m2: float = Field(gt=0, le=1_000_000)
+    stories: int = Field(default=1, ge=1, le=200)
     building_type: str = Field(min_length=1, max_length=80)
     heating_fuel: Literal["gas", "electric", "heat_pump"] = "heat_pump"
     system_type: str = Field(default="psz-ac", min_length=1, max_length=40)
@@ -168,6 +169,7 @@ class Meter(StrictModel):
     end: datetime
     value: float = Field(ge=0)
     granularity: Literal["month", "day", "hour"] = "month"
+    role: Literal["main", "sub"] = "main"
 
     @field_validator("start", "end")
     @classmethod

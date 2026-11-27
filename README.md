@@ -32,7 +32,7 @@ Weekly or monthly JSON, one batch per site. The contract is [docs/data-contract.
 
 Each stored setpoint is `source=actual` or `source=inferred` and includes a confidence score. Fault periods marked `exclude_from_calibration` are left out of the fit.
 
-EnergyPlus calibration compares monthly electricity (kWh) and gas (therm) with Guideline 14. Monthly limits are CV(RMSE) ≤ 15% and |NMBE| ≤ 5%. Hourly limits are 30% and 10% when an hourly meter series is present. `p` defaults to 1.
+EnergyPlus calibration compares a full year of monthly electricity (kWh) and gas (therm) with Guideline 14. Monthly limits are CV(RMSE) ≤ 15% and |NMBE| ≤ 5%. Fewer than 12 usable months is `insufficient-data`, not a Guideline 14 result. Hourly Guideline 14 is not claimed. `p` defaults to 1 and is shown with the number of tuned parameters.
 
 The quickstart calibrator is a **screening** change-point model (baseload, cooling per degree-day, heating per degree-day). A setpoint change moves the balance point. It is never promoted and it is not shown under a Guideline 14 heading. The same CV(RMSE) and NMBE functions accept an EnergyPlus `Electricity:Facility` series (joules converted to kWh).
 
