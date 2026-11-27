@@ -58,11 +58,13 @@ def load_model() -> list[list[str]]:
 
 def apply_case(objects: list[list[str]], case: dict, span: str) -> str:
     """Map one sweep point and the summary schedule onto a copy of the IDF."""
-    edited = [list(obj) for obj in objects]
+    edited = [list(obj) for obj in objects if obj[0] != "RunPeriodControl:DaylightSavingTime"]
     heating = case["heating_setpoint_c"] + case["setpoint_offset_c"]
     cooling = case["cooling_setpoint_c"] + case["setpoint_offset_c"]
     if cooling < heating + 1:
         cooling = heating + 1
+    _split_shared_days(edited)
+    roles = _day_roles(edited)
     for obj in edited:
         kind = obj[0]
         if kind == "Lights" and _method(obj) == "Watts/Area" and len(obj) > 6:
@@ -78,7 +80,7 @@ def apply_case(objects: list[list[str]], case: dict, span: str) -> str:
             if index is not None and len(obj) > index:
                 obj[index] = _scale(obj[index], case["infiltration_multiplier"])
         elif kind == "Schedule:Day:Interval":
-            _rewrite_day(obj, case, heating, cooling)
+            _rewrite_day(obj, case, heating, cooling, roles)
         elif kind == "RunPeriod" and len(obj) > 6:
             begin_month, begin_day, end_month, end_day = _span(span)
             obj[2] = str(begin_month)
@@ -120,11 +122,72 @@ def _span(span: str) -> tuple[int, int, int, int]:
     return (1, 1, 12, 31)
 
 
-def _rewrite_day(obj: list[str], case: dict, heating: float, cooling: float) -> None:
-    name = obj[1] if len(obj) > 1 else ""
-    weekend = _weekend(name)
-    start = case["occupied_start"]
-    end = case["occupied_end"]
+# Schedule:Week:Daily field index -> day type. OpenStudio writes this, not Schedule:Rule.
+# EnergyPlus 24.2's IDD has no Schedule:Ruleset object. Design days are left unchanged.
+_WEEK_ROLE = {
+    2: "sunday",
+    3: "monday",
+    4: "tuesday",
+    5: "wednesday",
+    6: "thursday",
+    7: "friday",
+    8: "saturday",
+    9: "holiday",
+    10: "summerdesignday",
+    11: "winterdesignday",
+    12: "customday1",
+    13: "customday2",
+}
+_WEEKDAY = {"monday", "tuesday", "wednesday", "thursday", "friday"}
+_UNOCCUPIED = {"sunday", "saturday", "holiday", "customday1", "customday2"}
+_DESIGN = {"summerdesignday", "winterdesignday"}
+
+
+def _split_shared_days(objects: list[list[str]]) -> None:
+    """Give a day profile that is both a weekday and a weekend its own weekend copy."""
+    roles = _day_roles(objects)
+    clones: list[list[str]] = []
+    for name, used in roles.items():
+        ordinary = used - _DESIGN
+        if not (ordinary & _WEEKDAY and ordinary & _UNOCCUPIED):
+            continue
+        source = next(
+            (obj for obj in objects if obj[0] == "Schedule:Day:Interval" and len(obj) > 1 and obj[1].strip() == name),
+            None,
+        )
+        if source is None:
+            continue
+        clone_name = f"{name} Weekend"
+        clone = list(source)
+        clone[1] = clone_name
+        clones.append(clone)
+        for obj in objects:
+            if obj[0] != "Schedule:Week:Daily":
+                continue
+            for index, role in _WEEK_ROLE.items():
+                if role in _UNOCCUPIED and len(obj) > index and obj[index].strip() == name:
+                    obj[index] = clone_name
+    objects.extend(clones)
+
+
+def _day_roles(objects: list[list[str]]) -> dict[str, set[str]]:
+    roles: dict[str, set[str]] = {}
+    for obj in objects:
+        if obj[0] != "Schedule:Week:Daily":
+            continue
+        for index, role in _WEEK_ROLE.items():
+            if len(obj) > index and obj[index].strip():
+                roles.setdefault(obj[index].strip(), set()).add(role)
+    return roles
+
+
+def _rewrite_day(obj: list[str], case: dict, heating: float, cooling: float, roles: dict[str, set[str]]) -> None:
+    name = obj[1].strip() if len(obj) > 1 else ""
+    used = roles.get(name, set())
+    ordinary = used - _DESIGN
+    if not ordinary:
+        return
+    weekend = ordinary.isdisjoint(_WEEKDAY) and bool(ordinary & _UNOCCUPIED)
     if "HTGSETP" in name:
         values = (case["unoccupied_heating_c"], heating)
     elif "CLGSETP" in name:
@@ -137,13 +200,16 @@ def _rewrite_day(obj: list[str], case: dict, heating: float, cooling: float) -> 
         values = (0.0, 1.0)
     else:
         return
-    pairs = _intervals(start, end, occupied=values[1], unoccupied=values[0], weekend=weekend)
+    mask = None
+    if weekend and case.get("weekend_hours"):
+        mask = case["weekend_hours"]
+    elif not weekend and case.get("weekday_hours"):
+        mask = case["weekday_hours"]
+    if mask is not None:
+        pairs = _intervals_from_mask(mask, occupied=values[1], unoccupied=values[0])
+    else:
+        pairs = _intervals(case["occupied_start"], case["occupied_end"], occupied=values[1], unoccupied=values[0], weekend=weekend)
     obj[4:] = [item for pair in pairs for item in (pair[0], _num(pair[1]))]
-
-
-def _weekend(name: str) -> bool:
-    lowered = name.lower()
-    return any(token in lowered for token in ("wknd", "weekend", "saturday", "sunday", "holiday"))
 
 
 def _intervals(start: str, end: str, occupied: float, unoccupied: float, weekend: bool) -> list[tuple[str, float]]:
@@ -154,3 +220,17 @@ def _intervals(start: str, end: str, occupied: float, unoccupied: float, weekend
             return [("24:00", occupied)]
         return [(end, occupied), ("24:00", unoccupied)]
     return [(start, unoccupied), (end, occupied), ("24:00", unoccupied)]
+
+
+def _intervals_from_mask(mask: list[bool], occupied: float, unoccupied: float) -> list[tuple[str, float]]:
+    if len(mask) != 24:
+        raise ValueError("hour mask must cover 24 hours")
+    pairs: list[tuple[str, float]] = []
+    value = occupied if mask[0] else unoccupied
+    for hour in range(1, 24):
+        nxt = occupied if mask[hour] else unoccupied
+        if nxt != value:
+            pairs.append((f"{hour:02d}:00", value))
+            value = nxt
+    pairs.append(("24:00", value))
+    return pairs

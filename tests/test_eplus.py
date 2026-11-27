@@ -23,6 +23,25 @@ def test_summaries_set_the_occupied_window_and_setpoints():
     assert case["unoccupied_cooling_c"] == 27.0
 
 
+def test_hour_of_week_builds_the_weekday_and_weekend_masks():
+    profile = []
+    for day in range(7):
+        for hour in range(24):
+            profile.append(0.9 if day < 5 and 9 <= hour < 15 else 0.05)
+    case = conditions_from_payloads(
+        [
+            {
+                "run_hours": [{"hour_of_week": profile}],
+                "schedules": [{"windows": [{"days": "weekday", "start": "07:00", "end": "18:00"}]}],
+            }
+        ]
+    )
+    assert case["occupied_start"] == "09:00"
+    assert case["occupied_end"] == "15:00"
+    assert case["weekday_hours"][9] and not case["weekday_hours"][8]
+    assert not any(case["weekend_hours"])
+
+
 def test_case_is_written_into_the_prototype():
     case = base_case(
         lighting_w_m2=11,
@@ -43,7 +62,7 @@ def test_case_is_written_into_the_prototype():
     coil = next(obj for obj in edited if obj[0] == "Coil:Cooling:DX:SingleSpeed")
     infiltration = next(obj for obj in edited if obj[0] == "ZoneInfiltration:DesignFlowRate" and obj[1].startswith("Perimeter"))
     run_period = next(obj for obj in edited if obj[0] == "RunPeriod")
-    heating = next(obj for obj in edited if obj[0] == "Schedule:Day:Interval" and "HTGSETP" in obj[1] and "Wknd" not in obj[1])
+    heating = next(obj for obj in edited if obj[0] == "Schedule:Day:Interval" and obj[1].endswith("HTGSETP_SCH_NO_OPTIMUM Wkdy Day"))
     assert float(lights[6]) == 11
     assert float(plugs[6]) == 9
     assert float(fan[3]) == 0.5
@@ -51,6 +70,14 @@ def test_case_is_written_into_the_prototype():
     assert float(infiltration[7]) == pytest.approx(float(original[7]) * 2, rel=1e-4)
     assert (run_period[2], run_period[3], run_period[5], run_period[6]) == ("1", "1", "1", "3")
     assert "07:00" in heating and "21" in heating
+    weekend = next(obj for obj in edited if obj[0] == "Schedule:Day:Interval" and obj[1].endswith("HTGSETP_SCH_NO_OPTIMUM Default"))
+    original_design = next(
+        obj for obj in load_model() if obj[0] == "Schedule:Day:Interval" and obj[1].endswith("HTGSETP_SCH_NO_OPTIMUM Winter Design Day")
+    )
+    design = next(obj for obj in edited if obj[1] == original_design[1])
+    assert weekend[4:] == ["24:00", "15.6"]
+    assert design[4:] == original_design[4:]
+    assert not any(obj[0] == "RunPeriodControl:DaylightSavingTime" for obj in edited)
 
 
 def test_coarse_grid_then_refinement_recovers_the_better_lighting_level():

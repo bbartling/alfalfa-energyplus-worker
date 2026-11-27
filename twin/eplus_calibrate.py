@@ -62,7 +62,12 @@ def conditions_from_payloads(payloads: list[dict]) -> dict:
         case["unoccupied_cooling_c"] = sum(cooling_off) / len(cooling_off)
     elif cooling:
         case["unoccupied_cooling_c"] = case["cooling_setpoint_c"] + 3
-    if window is not None:
+    masks = _hour_masks(payloads)
+    if masks is not None:
+        case["weekday_hours"] = masks["weekday"]
+        case["weekend_hours"] = masks["weekend"]
+        case["occupied_start"], case["occupied_end"] = _span_from_mask(masks["weekday"])
+    elif window is not None:
         case["occupied_start"], case["occupied_end"] = window
     return case
 
@@ -152,9 +157,13 @@ def apply_measures(case: dict, measures: list[dict]) -> dict:
         elif measure["name"] == "lower_heating_setpoint":
             updated["heating_setpoint_c"] = float(updated["heating_setpoint_c"]) - float(measure["delta_c"])
         elif measure["name"] == "trim_run_hours":
-            updated["occupied_start"], updated["occupied_end"] = _trim_window(
-                updated["occupied_start"], updated["occupied_end"], float(measure["fraction"])
-            )
+            if updated.get("weekday_hours"):
+                updated["weekday_hours"] = _trim_mask(updated["weekday_hours"], float(measure["fraction"]))
+                updated["occupied_start"], updated["occupied_end"] = _span_from_mask(updated["weekday_hours"])
+            else:
+                updated["occupied_start"], updated["occupied_end"] = _trim_window(
+                    updated["occupied_start"], updated["occupied_end"], float(measure["fraction"])
+                )
     return updated
 
 
@@ -293,6 +302,42 @@ def _setpoints(payloads: list[dict], kind: str, period: str) -> list[float]:
             if item.get("kind") == kind and item.get("period") == period:
                 found.append(float(item["value"]))
     return found
+
+
+def _hour_masks(payloads: list[dict]) -> dict[str, list[bool]] | None:
+    profiles = []
+    for payload in payloads:
+        for item in payload.get("run_hours") or []:
+            profile = item.get("hour_of_week")
+            if profile and len(profile) == 168:
+                profiles.append([float(value) for value in profile])
+    if not profiles:
+        return None
+    average = [sum(profile[index] for profile in profiles) / len(profiles) for index in range(168)]
+
+    def mask(days: range) -> list[bool]:
+        hours = []
+        for hour in range(24):
+            values = [average[day * 24 + hour] for day in days]
+            hours.append(sum(values) / len(values) >= 0.5)
+        return hours
+
+    return {"weekday": mask(range(5)), "weekend": mask(range(5, 7))}
+
+
+def _span_from_mask(mask: list[bool]) -> tuple[str, str]:
+    if not any(mask):
+        return "00:00", "00:00"
+    first = next(hour for hour, on in enumerate(mask) if on)
+    last = max(hour for hour, on in enumerate(mask) if on)
+    return f"{first:02d}:00", f"{last + 1:02d}:00"
+
+
+def _trim_mask(mask: list[bool], fraction: float) -> list[bool]:
+    occupied = [hour for hour, on in enumerate(mask) if on]
+    keep = max(0, int(round(len(occupied) * (1 - fraction))))
+    drop = set(occupied[keep:])
+    return [on and hour not in drop for hour, on in enumerate(mask)]
 
 
 def _window(payloads: list[dict]) -> tuple[str, str] | None:
