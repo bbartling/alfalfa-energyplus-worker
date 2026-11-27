@@ -46,6 +46,8 @@ def test_infers_setpoints_calibrates_and_prices_a_what_if(client, auth):
     assert calibrated.status_code == 200
     result = calibrated.json()["result"]
     assert result["decision"] == "promoted"
+    assert result["engine"]["name"] == "quick-estimate"
+    assert result["engine"]["label"] == "quick estimate"
     assert result["parameters"] == {"lighting_w_m2": 10.0, "cooling_cop": 3.5, "infiltration_ach": 0.6}
     assert all(item["pass"] for item in result["metrics"])
     scenario = client.post(
@@ -117,6 +119,19 @@ def test_scheduler_is_idempotent_within_a_month_and_drift_recalibrates(client, a
         params={"now": datetime(2026, 4, 28, tzinfo=timezone.utc).isoformat()},
     ).json()
     assert any(job["spec"].get("reason") == "drift" for job in drifted["jobs"])
+
+
+def test_energyplus_calibration_is_queued_for_the_worker(client, auth):
+    spec = SITES[0]
+    client.post("/v1/sites", json=site_record(spec), headers=auth)
+    for batch in batches_for(spec, include_incremental=False):
+        client.post(f"/v1/sites/{spec['site_id']}/operations", json=batch, headers=auth)
+    queued = client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth, params={"engine": "energyplus"})
+    assert queued.status_code == 202
+    body = queued.json()
+    assert body["status"] == "queued"
+    assert body["kind"] == "energyplus-calibration"
+    assert client.post(f"/v1/sites/{spec['site_id']}/calibrations", headers=auth, params={"engine": "other"}).status_code == 422
 
 
 def test_live_alfalfa_is_optional(client, auth):

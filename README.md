@@ -32,7 +32,21 @@ Weekly or monthly JSON, one batch per site. The contract is [docs/data-contract.
 
 Each stored setpoint is `source=actual` or `source=inferred` and includes a confidence score. Fault periods marked `exclude_from_calibration` are left out of the fit.
 
-Calibration compares monthly electricity (kWh) and gas (therm) with Guideline 14. Monthly limits are CV(RMSE) ≤ 15% and |NMBE| ≤ 5%. Hourly limits are 30% and 10% when an hourly meter series is present. `p` defaults to 1. The quickstart uses a summary energy model so the demo finishes immediately. The same CV(RMSE) and NMBE functions accept an EnergyPlus `Electricity:Facility` meter CSV (joules converted to kWh).
+Calibration compares monthly electricity (kWh) and gas (therm) with Guideline 14. Monthly limits are CV(RMSE) ≤ 15% and |NMBE| ≤ 5%. Hourly limits are 30% and 10% when an hourly meter series is present. `p` defaults to 1.
+
+The quickstart calibrator is labeled **quick estimate**. It is a summary energy model so the demo finishes immediately. The same CV(RMSE) and NMBE functions accept an EnergyPlus `Electricity:Facility` series (joules converted to kWh).
+
+## EnergyPlus calibration
+
+`POST /v1/sites/{site_id}/calibrations?engine=energyplus` queues a worker job. The job maps the summary schedules and setpoints onto the DOE SmallOffice prototype (ASHRAE 90.1-2013, checked in under `models/`), then runs a coarse grid and a half-step refinement on infiltration, lighting and plug LPD, fan efficiency, cooling COP, and the setpoint offset. Each point is one annual run of EnergyPlus 24.2 in `nrel/openstudio:3.9.0`. Monthly `Electricity:Facility` and `NaturalGas:Facility` are scaled by site area over the prototype area (511 m²) and scored with Guideline 14. One annual run of this small office is about ten seconds, so the default grid is tens of minutes. A wider grid or a larger model is the long job the worker is for.
+
+The API does not run that sweep inline. Start the worker next to the API:
+
+```bash
+docker compose --profile energyplus up --build -d
+```
+
+CI runs two three-day simulations (`pytest -m energyplus`), not the full grid. `make test` skips that marker.
 
 A monthly policy and a weekly tracking policy live on `POST /v1/sites/{site_id}/policies`. `POST /v1/scheduler/tick` enqueues what is due. Two tracking results with CV(RMSE) above 30% enqueue a recalibration. Long runs can be pulled by `python -m twin.runner` with `TWIN_INLINE_JOBS=0`.
 

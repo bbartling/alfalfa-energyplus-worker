@@ -154,10 +154,12 @@ def create_job(session: Session, site_id: str, kind: str, spec: dict, created_at
 
 def execute(session: Session, job: Job) -> Job:
     job.status = "running"
-    session.flush()
+    session.commit()
     try:
         if job.kind == "calibration":
             job.result = calibrate(session, job.site_id)
+        elif job.kind == "energyplus-calibration":
+            job.result = calibrate_energyplus(session, job.site_id, span=job.spec.get("span") or "year")
         elif job.kind == "tracking":
             job.result = track(session, job.site_id)
         else:
@@ -187,6 +189,25 @@ def calibrate(session: Session, site_id: str) -> dict:
     metrics.extend(_split_metrics(best, holdout, site.floor_area_m2, "holdout"))
     promoted = _split_passes(metrics, "train") and _split_passes(metrics, "holdout")
     decision = "promoted" if promoted else "rejected"
+    return _save_model(
+        session,
+        site_id,
+        promoted,
+        best.as_dict(),
+        ensemble,
+        metrics,
+        {
+            "name": "quick-estimate",
+            "label": "quick estimate",
+            "decision": decision,
+            "openstudio": None,
+            "energyplus": None,
+        },
+        len(LIGHTING_RUNS()),
+    )
+
+
+def _save_model(session, site_id, promoted, parameters, ensemble, metrics, engine, runs) -> dict:
     for prior in session.scalars(select(ModelVersion).where(ModelVersion.site_id == site_id, ModelVersion.status == "active")):
         if promoted:
             prior.status = "retired"
@@ -194,23 +215,28 @@ def calibrate(session: Session, site_id: str) -> dict:
         id=str(uuid4()),
         site_id=site_id,
         status="active" if promoted else "candidate",
-        parameters=best.as_dict(),
+        parameters=parameters,
         ensemble=ensemble,
         metrics=metrics,
-        engine={"name": "summary-energy-model", "decision": decision, "openstudio": None, "energyplus": None},
+        engine=engine,
     )
     session.add(version)
     session.flush()
     return {
         "site_id": site_id,
         "model_version_id": version.id,
-        "decision": decision,
-        "parameters": best.as_dict(),
+        "decision": engine.get("decision"),
+        "parameters": parameters,
         "ensemble": ensemble,
         "metrics": metrics,
-        "runs": len(LIGHTING_RUNS()),
+        "runs": runs,
         "engine": version.engine,
     }
+
+
+def _payloads(session: Session, site_id: str) -> list[dict]:
+    rows = session.scalars(select(Batch).where(Batch.site_id == site_id).order_by(Batch.period_start)).all()
+    return [row.payload for row in rows]
 
 
 def LIGHTING_RUNS() -> range:
@@ -219,10 +245,49 @@ def LIGHTING_RUNS() -> range:
     return range(len(LIGHTING_GRID) * len(COP_GRID) * len(ACH_GRID))
 
 
+def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> dict:
+    """Batch EnergyPlus calibration. This is the long job, not the quick estimate."""
+    from twin.eplus import simulate, weather_file
+    from twin.eplus_calibrate import conditions_from_payloads, fit
+
+    site = session.get(Site, site_id)
+    if site is None:
+        raise NotReady("unknown site")
+    months = usable_months(session, site_id)
+    payloads = _payloads(session, site_id)
+    weather = weather_file(site.latitude)
+
+    def run_fn(case: dict, run_span: str) -> dict:
+        return simulate(case, weather, run_span)
+
+    try:
+        fitted = fit(conditions_from_payloads(payloads), months, site.floor_area_m2, run_fn, span=span)
+    except ValueError as exc:
+        raise NotReady(str(exc)) from exc
+    fitted["engine"]["weather"] = weather
+    return _save_model(
+        session,
+        site_id,
+        fitted["decision"] == "promoted",
+        fitted["parameters"],
+        fitted["ensemble"],
+        fitted["metrics"],
+        fitted["engine"],
+        fitted["runs"],
+    )
+
+
 def track(session: Session, site_id: str) -> dict:
     version = active_version(session, site_id)
     if version is None:
         raise NotReady("no active model to track")
+    if version.engine.get("name") == "energyplus":
+        return {
+            "model_version_id": version.id,
+            "mode": "stored",
+            "metrics": version.metrics,
+            "note": "EnergyPlus tracking reuses the last calibration until the next batch run.",
+        }
     months = usable_months(session, site_id)
     window = months[-2:]
     if len(window) < 2:
