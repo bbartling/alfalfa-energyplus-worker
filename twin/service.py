@@ -1,0 +1,547 @@
+"""Ingest summaries, infer missing setpoints, calibrate, and price what-ifs."""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from twin.db import Batch, Job, ModelVersion, Policy, Scenario, Site, utcnow
+from twin.energy import Params, predict, search
+from twin.guideline14 import assess
+from twin.infer import infer_steady, infer_zone
+from twin.schemas import UNITS, OperationsBatch
+
+DAY_WEIGHT = {
+    "weekday": 5 / 7,
+    "weekend": 2 / 7,
+    "all": 1.0,
+    "monday": 1 / 7,
+    "tuesday": 1 / 7,
+    "wednesday": 1 / 7,
+    "thursday": 1 / 7,
+    "friday": 1 / 7,
+    "saturday": 1 / 7,
+    "sunday": 1 / 7,
+}
+SENSOR_KIND = {
+    "supply_air_temp": "supply_air_temp",
+    "duct_static": "duct_static",
+    "chw_temp": "chw",
+    "hw_temp": "hw",
+}
+
+
+class Conflict(Exception):
+    pass
+
+
+class NotReady(Exception):
+    pass
+
+
+def canonical_hash(payload: dict) -> str:
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def sign_body(secret: str, body: bytes) -> str:
+    return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+
+
+def apply_inference(batch: OperationsBatch) -> OperationsBatch:
+    data = batch.model_dump(mode="json")
+    existing = {(item.equipment_id, item.kind, item.period) for item in batch.setpoints}
+    for sensor in batch.sensors:
+        if sensor.kind == "zone_temp":
+            pairs = (
+                ("occupied", sensor.occupied_samples, False),
+                ("unoccupied", sensor.unoccupied_samples, True),
+            )
+            for period, samples, unoccupied in pairs:
+                if len(samples) < 8:
+                    continue
+                heating, cooling = infer_zone(samples, unoccupied=unoccupied)
+                for kind, inferred in (("zone_heating", heating), ("zone_cooling", cooling)):
+                    _add_setpoint(data, existing, sensor.equipment_id, kind, period, inferred)
+        elif len(sensor.samples_while_running) >= 8:
+            inferred = infer_steady(sensor.samples_while_running)
+            _add_setpoint(
+                data, existing, sensor.equipment_id, SENSOR_KIND[sensor.kind], "always", inferred
+            )
+    return OperationsBatch.model_validate(data)
+
+
+def _add_setpoint(data, existing, equipment_id, kind, period, inferred) -> None:
+    key = (equipment_id, kind, period)
+    if key in existing:
+        return
+    data["setpoints"].append(
+        {
+            "equipment_id": equipment_id,
+            "kind": kind,
+            "period": period,
+            "unit": UNITS[kind],
+            "value": inferred.value,
+            "source": "inferred",
+            "confidence": inferred.confidence,
+            "method": inferred.method,
+        }
+    )
+    existing.add(key)
+
+
+def store_batch(session: Session, batch: OperationsBatch) -> dict:
+    site = session.get(Site, batch.site_id)
+    if site is None:
+        raise NotReady("unknown site")
+    raw = batch.model_dump(mode="json")
+    digest = canonical_hash(raw)
+    existing = session.scalar(
+        select(Batch).where(Batch.site_id == batch.site_id, Batch.batch_id == str(batch.batch_id))
+    )
+    if existing is not None:
+        if existing.body_hash != digest:
+            raise Conflict("batch_id was already stored with a different body")
+        return {"batch_id": existing.batch_id, "duplicate": True, "payload": existing.payload}
+    normalized = apply_inference(batch).model_dump(mode="json")
+    row = Batch(
+        site_id=batch.site_id,
+        batch_id=str(batch.batch_id),
+        body_hash=digest,
+        period_start=normalized["period"]["start"],
+        period_end=normalized["period"]["end"],
+        payload=normalized,
+    )
+    session.add(row)
+    session.commit()
+    return {"batch_id": row.batch_id, "duplicate": False, "payload": normalized}
+
+
+def coverage(session: Session, site_id: str, start: datetime, end: datetime) -> dict:
+    rows = session.scalars(select(Batch).where(Batch.site_id == site_id)).all()
+    present = sorted({row.period_start[:7] for row in rows})
+    missing = []
+    cursor = datetime(start.year, start.month, 1, tzinfo=timezone.utc)
+    stop = datetime(end.year, end.month, 1, tzinfo=timezone.utc)
+    while cursor < stop:
+        key = cursor.strftime("%Y-%m")
+        if key not in present:
+            missing.append(key)
+        cursor = _add_month(cursor)
+    return {"site_id": site_id, "months_present": present, "months_missing": missing}
+
+
+def create_job(session: Session, site_id: str, kind: str, spec: dict, created_at: datetime | None = None) -> Job:
+    job = Job(
+        id=str(uuid4()),
+        site_id=site_id,
+        kind=kind,
+        status="queued",
+        spec=spec,
+        result=None,
+        created_at=created_at or utcnow(),
+    )
+    session.add(job)
+    session.flush()
+    return job
+
+
+def execute(session: Session, job: Job) -> Job:
+    job.status = "running"
+    session.flush()
+    try:
+        if job.kind == "calibration":
+            job.result = calibrate(session, job.site_id)
+        elif job.kind == "tracking":
+            job.result = track(session, job.site_id)
+        else:
+            raise NotReady(f"unsupported job kind {job.kind}")
+        job.status = "completed"
+    except Exception as exc:
+        job.status = "failed"
+        job.error = str(exc)[:500]
+        job.result = {"error": job.error}
+    job.finished_at = utcnow()
+    session.commit()
+    return job
+
+
+def calibrate(session: Session, site_id: str) -> dict:
+    site = session.get(Site, site_id)
+    if site is None:
+        raise NotReady("unknown site")
+    months = usable_months(session, site_id)
+    if len(months) < 4:
+        raise NotReady("need at least four usable months to calibrate")
+    train, holdout = months[:-2], months[-2:]
+    ranked = search(train, site.floor_area_m2)
+    best = ranked[0][0]
+    ensemble = [params.as_dict() for params, _score in ranked[:5]]
+    metrics = _split_metrics(best, train, site.floor_area_m2, "train")
+    metrics.extend(_split_metrics(best, holdout, site.floor_area_m2, "holdout"))
+    promoted = _split_passes(metrics, "train") and _split_passes(metrics, "holdout")
+    decision = "promoted" if promoted else "rejected"
+    for prior in session.scalars(select(ModelVersion).where(ModelVersion.site_id == site_id, ModelVersion.status == "active")):
+        if promoted:
+            prior.status = "retired"
+    version = ModelVersion(
+        id=str(uuid4()),
+        site_id=site_id,
+        status="active" if promoted else "candidate",
+        parameters=best.as_dict(),
+        ensemble=ensemble,
+        metrics=metrics,
+        engine={"name": "summary-energy-model", "decision": decision, "openstudio": None, "energyplus": None},
+    )
+    session.add(version)
+    session.flush()
+    return {
+        "site_id": site_id,
+        "model_version_id": version.id,
+        "decision": decision,
+        "parameters": best.as_dict(),
+        "ensemble": ensemble,
+        "metrics": metrics,
+        "runs": len(LIGHTING_RUNS()),
+        "engine": version.engine,
+    }
+
+
+def LIGHTING_RUNS() -> range:
+    from twin.energy import ACH_GRID, COP_GRID, LIGHTING_GRID
+
+    return range(len(LIGHTING_GRID) * len(COP_GRID) * len(ACH_GRID))
+
+
+def track(session: Session, site_id: str) -> dict:
+    version = active_version(session, site_id)
+    if version is None:
+        raise NotReady("no active model to track")
+    months = usable_months(session, site_id)
+    window = months[-2:]
+    if len(window) < 2:
+        raise NotReady("not enough months to track")
+    params = Params(**version.parameters)
+    metrics = _split_metrics(params, window, session.get(Site, site_id).floor_area_m2, "tracking")
+    return {"model_version_id": version.id, "metrics": metrics}
+
+
+def run_scenario(session: Session, site_id: str, name: str, measures: list[dict], costs: dict) -> Scenario:
+    version = active_version(session, site_id)
+    if version is None:
+        raise NotReady("no active model for a what-if")
+    months = usable_months(session, site_id)
+    if len(months) < 2:
+        raise NotReady("not enough months for a what-if")
+    area = session.get(Site, site_id).floor_area_m2
+    baseline = Params(**version.parameters)
+    result = price_measures(baseline, months, area, measures, costs, version.ensemble)
+    scenario = Scenario(
+        id=str(uuid4()),
+        site_id=site_id,
+        name=name,
+        model_version_id=version.id,
+        spec={"measures": measures, "costs": costs},
+        result=result,
+        status="completed",
+    )
+    session.add(scenario)
+    session.commit()
+    return scenario
+
+
+def price_measures(params: Params, months: list[dict], area: float, measures: list[dict], costs: dict, ensemble: list[dict]) -> dict:
+    save_kwh, save_therms, save_usd = _savings(params, months, area, measures, costs)
+    band = []
+    for item in ensemble:
+        _kwh, _therms, usd = _savings(Params(**item), months, area, measures, costs)
+        band.append(usd)
+    annual = save_usd
+    payback = None if annual <= 0 else costs["implementation_usd"] / annual
+    return {
+        "annual_kwh_savings": save_kwh,
+        "annual_therm_savings": save_therms,
+        "annual_cost_savings_usd": annual,
+        "simple_payback_years": payback,
+        "npv_usd": net_present_value(costs["implementation_usd"], annual, costs["discount_rate"], costs["horizon_years"]),
+        "cost_savings_band_usd": [min(band), max(band)] if band else [annual, annual],
+    }
+
+
+def net_present_value(initial: float, annual: float, rate: float, years: int) -> float:
+    total = -initial
+    for year in range(1, years + 1):
+        total += annual / ((1 + rate) ** year)
+    return total
+
+
+def tick(session: Session, now: datetime) -> list[Job]:
+    created: list[Job] = []
+    policies = session.scalars(select(Policy).where(Policy.enabled.is_(True))).all()
+    for policy in policies:
+        since = _month_start(now) if policy.cadence == "monthly" else now - timedelta(days=7)
+        if _recent_job(session, policy.site_id, policy.kind, since):
+            continue
+        created.append(create_job(session, policy.site_id, policy.kind, {"reason": policy.cadence}, created_at=now))
+    watched = {policy.site_id for policy in policies}
+    watched.update(
+        session.scalars(select(Job.site_id).where(Job.kind == "tracking", Job.status == "completed")).all()
+    )
+    for site_id in sorted(watched):
+        if not is_drifting(session, site_id):
+            continue
+        if _recent_job(session, site_id, "calibration", now - timedelta(days=7)):
+            continue
+        created.append(create_job(session, site_id, "calibration", {"reason": "drift"}, created_at=now))
+    session.commit()
+    return created
+
+
+def is_drifting(session: Session, site_id: str) -> bool:
+    jobs = session.scalars(
+        select(Job)
+        .where(Job.site_id == site_id, Job.kind == "tracking", Job.status == "completed")
+        .order_by(Job.created_at.desc())
+    ).all()
+    recent = list(jobs)[:2]
+    if len(recent) < 2:
+        return False
+    return all(_cv_above(job, 30) for job in recent)
+
+
+def usable_months(session: Session, site_id: str) -> list[dict]:
+    rows = session.scalars(select(Batch).where(Batch.site_id == site_id)).all()
+    months = []
+    for row in rows:
+        month = month_from_payload(row.payload)
+        if month["electric_kwh"] is None or month["exclude"]:
+            continue
+        months.append(month)
+    months.sort(key=lambda item: item["start"])
+    return months
+
+
+def month_from_payload(payload: dict) -> dict:
+    start = _parse_time(payload["period"]["start"])
+    end = _parse_time(payload["period"]["end"])
+    days = max(1.0, (end - start).total_seconds() / 86400)
+    occupied = _occupied_hours(payload.get("schedules") or [], days)
+    run_hours = sum(item["hours"] for item in payload.get("run_hours") or [])
+    if occupied is None:
+        occupied = run_hours or days * 10
+    if run_hours <= 0:
+        run_hours = occupied
+    oa_values = [item["oa_fraction_mean"] for item in payload.get("outdoor_air") or []]
+    oa = sum(oa_values) / len(oa_values) if oa_values else 0.2
+    weather = payload["weather"]
+    return {
+        "start": start.isoformat(),
+        "days": days,
+        "occupied_hours": occupied,
+        "run_hours": run_hours,
+        "cooling_sp": _setpoint(payload.get("setpoints") or [], "zone_cooling", "occupied", 24.0),
+        "heating_sp": _setpoint(payload.get("setpoints") or [], "zone_heating", "occupied", 21.0),
+        "oa_fraction": oa,
+        "cdd": weather["cdd_base_18c"],
+        "hdd": weather["hdd_base_18c"],
+        "electric_kwh": _meter_total(payload.get("meters") or [], "electricity"),
+        "gas_therms": _meter_total(payload.get("meters") or [], "natural_gas"),
+        "exclude": any(item.get("exclude_from_calibration") for item in payload.get("faults") or []),
+    }
+
+
+def report(session: Session, site_id: str) -> dict:
+    site = session.get(Site, site_id)
+    if site is None:
+        raise NotReady("unknown site")
+    version = session.scalars(
+        select(ModelVersion).where(ModelVersion.site_id == site_id).order_by(ModelVersion.created_at.desc())
+    ).first()
+    scenarios = session.scalars(select(Scenario).where(Scenario.site_id == site_id).order_by(Scenario.created_at)).all()
+    batches = session.scalars(select(Batch).where(Batch.site_id == site_id).order_by(Batch.period_start)).all()
+    setpoints = batches[-1].payload.get("setpoints", []) if batches else []
+    calibration = None
+    if version is not None:
+        calibration = {
+            "model_version_id": version.id,
+            "status": version.status,
+            "decision": version.engine.get("decision"),
+            "parameters": version.parameters,
+            "metrics": version.metrics,
+            "engine": version.engine,
+        }
+    return {
+        "site_id": site.site_id,
+        "timezone": site.timezone,
+        "floor_area_m2": site.floor_area_m2,
+        "building_type": site.building_type,
+        "latitude": site.latitude,
+        "longitude": site.longitude,
+        "calibration": calibration,
+        "scenarios": [
+            {"id": item.id, "name": item.name, "status": item.status, "result": item.result} for item in scenarios
+        ],
+        "setpoints": setpoints,
+        "months_received": len(batches),
+    }
+
+
+def site_cards(session: Session) -> list[dict]:
+    cards = []
+    for site in session.scalars(select(Site).order_by(Site.site_id)).all():
+        item = report(session, site.site_id)
+        metric = _headline(None if item["calibration"] is None else item["calibration"]["metrics"])
+        cards.append(
+            {
+                "site_id": site.site_id,
+                "building_type": site.building_type,
+                "decision": None if item["calibration"] is None else item["calibration"]["decision"],
+                "cv_rmse_pct": None if metric is None else metric["cv_rmse_pct"],
+                "nmbe_pct": None if metric is None else metric["nmbe_pct"],
+                "fuel": None if metric is None else metric["fuel"],
+                "split": None if metric is None else metric["split"],
+            }
+        )
+    return cards
+
+
+def _headline(metrics):
+    if not metrics:
+        return None
+    holdout = [item for item in metrics if item["split"] == "holdout" and item["fuel"] == "electricity"]
+    return (holdout or metrics)[0]
+
+
+def _savings(params, months, area, measures, costs):
+    base_e, base_g, alt_e, alt_g, days = [], [], [], [], []
+    altered = [_apply_measures(month, measures) for month in months]
+    for month, changed in zip(months, altered, strict=True):
+        electric, gas = predict(params, month, area)
+        electric_alt, gas_alt = predict(params, changed, area)
+        base_e.append(electric)
+        base_g.append(gas)
+        alt_e.append(electric_alt)
+        alt_g.append(gas_alt)
+        days.append(month["days"])
+    scale = 365 / sum(days)
+    save_kwh = (sum(base_e) - sum(alt_e)) * scale
+    save_therms = (sum(base_g) - sum(alt_g)) * scale
+    usd = save_kwh * costs["electricity_usd_per_kwh"] + save_therms * costs["gas_usd_per_therm"]
+    return save_kwh, save_therms, usd
+
+
+def _apply_measures(month: dict, measures: list[dict]) -> dict:
+    updated = dict(month)
+    for measure in measures:
+        if measure["name"] == "raise_cooling_setpoint":
+            updated["cooling_sp"] = updated["cooling_sp"] + measure["delta_c"]
+        elif measure["name"] == "lower_heating_setpoint":
+            updated["heating_sp"] = updated["heating_sp"] - measure["delta_c"]
+        elif measure["name"] == "trim_run_hours":
+            updated["run_hours"] = updated["run_hours"] * (1 - measure["fraction"])
+            updated["occupied_hours"] = updated["occupied_hours"] * (1 - measure["fraction"])
+    return updated
+
+
+def _split_metrics(params: Params, months: list[dict], area: float, split: str) -> list[dict]:
+    electric_m, electric_s, gas_m, gas_s = [], [], [], []
+    for month in months:
+        electric, gas = predict(params, month, area)
+        electric_m.append(month["electric_kwh"])
+        electric_s.append(electric)
+        if month.get("gas_therms") is not None:
+            gas_m.append(month["gas_therms"])
+            gas_s.append(gas)
+    rows = [_assess_row(split, "electricity", "monthly", electric_m, electric_s)]
+    if len(gas_m) >= 2:
+        rows.append(_assess_row(split, "natural_gas", "monthly", gas_m, gas_s))
+    return rows
+
+
+def _assess_row(split, fuel, granularity, measured, simulated) -> dict:
+    stats = assess(measured, simulated, granularity)
+    return {"split": split, "fuel": fuel, **stats}
+
+
+def _split_passes(metrics: list[dict], split: str) -> bool:
+    rows = [item for item in metrics if item["split"] == split and item["claim"] == "guideline14"]
+    return bool(rows) and all(item["pass"] for item in rows)
+
+
+def _meter_total(meters: list[dict], fuel: str) -> float | None:
+    chosen = [item for item in meters if item["fuel"] == fuel]
+    monthly = [item for item in chosen if item["granularity"] == "month"]
+    use = monthly or chosen
+    if not use:
+        return None
+    return sum(item["value"] for item in use)
+
+
+def _setpoint(setpoints: list[dict], kind: str, period: str, default: float) -> float:
+    exact = [item for item in setpoints if item["kind"] == kind and item["period"] == period]
+    fallback = [item for item in setpoints if item["kind"] == kind and item["period"] == "always"]
+    chosen = exact or fallback
+    if not chosen:
+        return default
+    return sum(item["value"] for item in chosen) / len(chosen)
+
+
+def _occupied_hours(schedules: list[dict], days: float) -> float | None:
+    if not schedules:
+        return None
+    best = 0.0
+    for schedule in schedules:
+        hours = 0.0
+        for window in schedule["windows"]:
+            hours += _clock_hours(window["start"], window["end"]) * DAY_WEIGHT[window["days"]] * days
+        best = max(best, hours)
+    return best
+
+
+def _clock_hours(start: str, end: str) -> float:
+    start_h, start_m = (int(part) for part in start.split(":"))
+    end_h, end_m = (int(part) for part in end.split(":"))
+    return max(0.0, (end_h * 60 + end_m) - (start_h * 60 + start_m)) / 60
+
+
+def _parse_time(value) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+
+def _month_start(value: datetime) -> datetime:
+    return datetime(value.year, value.month, 1, tzinfo=timezone.utc)
+
+
+def _add_month(value: datetime) -> datetime:
+    month = value.month + 1
+    year = value.year + (month - 1) // 12
+    month = (month - 1) % 12 + 1
+    return datetime(year, month, 1, tzinfo=timezone.utc)
+
+
+def _recent_job(session: Session, site_id: str, kind: str, since: datetime) -> bool:
+    jobs = session.scalars(select(Job).where(Job.site_id == site_id, Job.kind == kind)).all()
+    for job in jobs:
+        created = job.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        if created >= since:
+            return True
+    return False
+
+
+def _cv_above(job: Job, limit: float) -> bool:
+    metrics = (job.result or {}).get("metrics") or []
+    return any(item.get("cv_rmse_pct", 0) > limit for item in metrics)
+
+
+def active_version(session: Session, site_id: str) -> ModelVersion | None:
+    return session.scalar(select(ModelVersion).where(ModelVersion.site_id == site_id, ModelVersion.status == "active"))
