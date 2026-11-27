@@ -35,10 +35,13 @@ def main() -> int:
         page = client.get(f"{API}/")
         page.raise_for_status()
         for spec in SITES:
-            if spec["site_id"] not in page.text or "CV(RMSE)" not in page.text:
-                print("dashboard is missing a site or Guideline 14 metrics", file=sys.stderr)
+            if spec["site_id"] not in page.text or "CV(RMSE)" not in page.text or "screening" not in page.text.lower():
+                print("dashboard is missing a site or the screening estimate", file=sys.stderr)
                 return 1
-    print("Poster delivered two sites and the reports show Guideline 14 metrics.")
+            if "Guideline 14" in page.text:
+                print("the quick estimate is presented as Guideline 14", file=sys.stderr)
+                return 1
+    print("Poster delivered two sites and the reports show a screening estimate.")
     return 0
 
 
@@ -57,8 +60,13 @@ def _deliver_site(client: httpx.Client, spec: dict) -> None:
         _expect(post_json(client, f"{API}/v1/sites/{spec['site_id']}/operations", batch, KEY), 200)
     calibrated = post_json(client, f"{API}/v1/sites/{spec['site_id']}/calibrations", None, KEY)
     _expect(calibrated, 200)
-    if calibrated.json()["result"]["decision"] != "promoted":
-        raise RuntimeError(f"{spec['site_id']} was not promoted: {calibrated.text}")
+    result = calibrated.json()["result"]
+    if result["decision"] != "screening" or result["engine"].get("claim") != "screening":
+        raise RuntimeError(f"{spec['site_id']} was not kept as a screening estimate: {calibrated.text}")
+    for name, value in spec["truth"].items():
+        recovered = result["parameters"][name]
+        if abs(recovered - value) / value > 0.2:
+            raise RuntimeError(f"{spec['site_id']} {name} recovered {recovered}, truth {value}")
     scenario = {
         "name": "Raise occupied cooling setpoint 1 C",
         "measures": [{"name": "raise_cooling_setpoint", "delta_c": 1.0}],
@@ -76,7 +84,7 @@ def _deliver_site(client: httpx.Client, spec: dict) -> None:
     report = client.get(f"{API}/v1/sites/{spec['site_id']}/report", headers={"Authorization": f"Bearer {KEY}"})
     report.raise_for_status()
     payload = report.json()
-    if payload["months_received"] < 7:
+    if payload["months_received"] < 14:
         raise RuntimeError("incremental month was not stored")
     sat = [item for item in payload["setpoints"] if item["kind"] == "supply_air_temp"]
     if not sat or sat[0]["source"] != "inferred" or abs(sat[0]["value"] - spec["sat"]) > 0.05:
@@ -88,6 +96,8 @@ def _deliver_site(client: httpx.Client, spec: dict) -> None:
     html.raise_for_status()
     if "CV(RMSE)" not in html.text or "NMBE" not in html.text or "NPV" not in html.text:
         raise RuntimeError("site report is missing calibration or ROI")
+    if "Guideline 14" in html.text or "Screening estimate" not in html.text:
+        raise RuntimeError("site report must label the quick estimate as screening")
 
 
 def _assert_isolation(client: httpx.Client) -> None:

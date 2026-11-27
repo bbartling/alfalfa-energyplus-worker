@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from twin.db import Batch, Job, ModelVersion, Policy, Scenario, Site, utcnow
-from twin.energy import Params, predict, search
+from twin.energy import Params, fit, leave_one_out, predict
 from twin.guideline14 import assess
 from twin.infer import infer_steady, infer_zone
 from twin.schemas import UNITS, OperationsBatch
@@ -193,46 +193,56 @@ def calibrate(session: Session, site_id: str) -> dict:
     months = usable_months(session, site_id)
     if len(months) < 4:
         raise NotReady("need at least four usable months to calibrate")
-    train, holdout = months[:-2], months[-2:]
-    ranked = search(train, site.floor_area_m2)
-    best = ranked[0][0]
-    ensemble = [params.as_dict() for params, _score in ranked[:5]]
-    metrics = _split_metrics(best, train, site.floor_area_m2, "train")
-    metrics.extend(_split_metrics(best, holdout, site.floor_area_m2, "holdout"))
-    promoted = _split_passes(metrics, "train") and _split_passes(metrics, "holdout")
-    decision = "promoted" if promoted else "rejected"
+    try:
+        best = fit(months, site.floor_area_m2)
+    except ValueError as exc:
+        raise NotReady(str(exc)) from exc
+    ensemble = [params.as_dict() for params in leave_one_out(months, site.floor_area_m2)]
+    metrics = _split_metrics(best, months, site.floor_area_m2, "all", claim="screening")
     return _save_model(
         session,
         site_id,
-        promoted,
+        False,
         best.as_dict(),
         ensemble,
         metrics,
         {
             "name": "quick-estimate",
-            "label": "quick estimate",
-            "decision": decision,
+            "label": "screening",
+            "claim": "screening",
+            "decision": "screening",
             "openstudio": None,
             "energyplus": None,
         },
-        len(LIGHTING_RUNS()),
+        max(1, len(ensemble)),
     )
 
 
 def _save_model(session, site_id, promoted, parameters, ensemble, metrics, engine, runs) -> dict:
     tenant = current_tenant(session)
-    for prior in session.scalars(
-        select(ModelVersion).where(
-            ModelVersion.tenant_id == tenant, ModelVersion.site_id == site_id, ModelVersion.status == "active"
-        )
-    ):
+    screening = engine.get("decision") == "screening"
+    if screening:
+        for prior in session.scalars(
+            select(ModelVersion).where(
+                ModelVersion.tenant_id == tenant, ModelVersion.site_id == site_id, ModelVersion.status == "screening"
+            )
+        ):
+            prior.status = "replaced"
+        status = "screening"
+    else:
         if promoted:
-            prior.status = "retired"
+            for prior in session.scalars(
+                select(ModelVersion).where(
+                    ModelVersion.tenant_id == tenant, ModelVersion.site_id == site_id, ModelVersion.status == "active"
+                )
+            ):
+                prior.status = "retired"
+        status = "active" if promoted else "candidate"
     version = ModelVersion(
         id=str(uuid4()),
         tenant_id=tenant,
         site_id=site_id,
-        status="active" if promoted else "candidate",
+        status=status,
         parameters=parameters,
         ensemble=ensemble,
         metrics=metrics,
@@ -257,12 +267,6 @@ def _payloads(session: Session, site_id: str) -> list[dict]:
         select(Batch).where(Batch.tenant_id == current_tenant(session), Batch.site_id == site_id).order_by(Batch.period_start)
     ).all()
     return [row.payload for row in rows]
-
-
-def LIGHTING_RUNS() -> range:
-    from twin.energy import ACH_GRID, COP_GRID, LIGHTING_GRID
-
-    return range(len(LIGHTING_GRID) * len(COP_GRID) * len(ACH_GRID))
 
 
 def calibrate_energyplus(session: Session, site_id: str, span: str = "year") -> dict:
@@ -313,7 +317,7 @@ def track(session: Session, site_id: str) -> dict:
     if len(window) < 2:
         raise NotReady("not enough months to track")
     params = Params(**version.parameters)
-    metrics = _split_metrics(params, window, get_site(session, site_id).floor_area_m2, "tracking")
+    metrics = _split_metrics(params, window, get_site(session, site_id).floor_area_m2, "tracking", claim="screening")
     return {"model_version_id": version.id, "metrics": metrics}
 
 
@@ -331,7 +335,8 @@ def run_scenario(session: Session, site_id: str, name: str, measures: list[dict]
         baseline = Params(**version.parameters)
         result = price_measures(baseline, months, area, measures, costs, version.ensemble)
         result["engine"] = "quick-estimate"
-        result["label"] = "quick estimate"
+        result["label"] = "screening"
+        result["claim"] = "screening"
     scenario = Scenario(
         id=str(uuid4()),
         tenant_id=current_tenant(session),
@@ -348,10 +353,10 @@ def run_scenario(session: Session, site_id: str, name: str, measures: list[dict]
 
 
 def price_measures(params: Params, months: list[dict], area: float, measures: list[dict], costs: dict, ensemble: list[dict]) -> dict:
-    save_kwh, save_therms, save_usd = _savings(params, months, area, measures, costs)
+    save_kwh, save_therms, save_usd, annualized = _savings(params, months, area, measures, costs)
     band = []
     for item in ensemble:
-        _kwh, _therms, usd = _savings(Params(**item), months, area, measures, costs)
+        _kwh, _therms, usd, _annualized = _savings(Params(**item), months, area, measures, costs)
         band.append(usd)
     annual = save_usd
     payback = None if annual <= 0 else costs["implementation_usd"] / annual
@@ -362,6 +367,7 @@ def price_measures(params: Params, months: list[dict], area: float, measures: li
         "simple_payback_years": payback,
         "npv_usd": net_present_value(costs["implementation_usd"], annual, costs["discount_rate"], costs["horizon_years"]),
         "cost_savings_band_usd": [min(band), max(band)] if band else [annual, annual],
+        "annualized": annualized,
     }
 
 
@@ -453,7 +459,8 @@ def month_from_payload(payload: dict) -> dict:
     end = _parse_time(payload["period"]["end"])
     days = max(1.0, (end - start).total_seconds() / 86400)
     occupied = _occupied_hours(payload.get("schedules") or [], days)
-    run_hours = sum(item["hours"] for item in payload.get("run_hours") or [])
+    equipment = payload.get("run_hours") or []
+    run_hours = sum(item["hours"] for item in equipment) / len(equipment) if equipment else 0.0
     if occupied is None:
         occupied = run_hours or days * 10
     if run_hours <= 0:
@@ -557,11 +564,12 @@ def _savings(params, months, area, measures, costs):
         alt_e.append(electric_alt)
         alt_g.append(gas_alt)
         days.append(month["days"])
-    scale = 365 / sum(days)
+    annualized = len(months) >= 12
+    scale = 365 / sum(days) if annualized else 1.0
     save_kwh = (sum(base_e) - sum(alt_e)) * scale
     save_therms = (sum(base_g) - sum(alt_g)) * scale
     usd = save_kwh * costs["electricity_usd_per_kwh"] + save_therms * costs["gas_usd_per_therm"]
-    return save_kwh, save_therms, usd
+    return save_kwh, save_therms, usd, annualized
 
 
 def _apply_measures(month: dict, measures: list[dict]) -> dict:
@@ -573,11 +581,10 @@ def _apply_measures(month: dict, measures: list[dict]) -> dict:
             updated["heating_sp"] = updated["heating_sp"] - measure["delta_c"]
         elif measure["name"] == "trim_run_hours":
             updated["run_hours"] = updated["run_hours"] * (1 - measure["fraction"])
-            updated["occupied_hours"] = updated["occupied_hours"] * (1 - measure["fraction"])
     return updated
 
 
-def _split_metrics(params: Params, months: list[dict], area: float, split: str) -> list[dict]:
+def _split_metrics(params: Params, months: list[dict], area: float, split: str, claim: str | None = None) -> list[dict]:
     electric_m, electric_s, gas_m, gas_s = [], [], [], []
     for month in months:
         electric, gas = predict(params, month, area)
@@ -586,14 +593,16 @@ def _split_metrics(params: Params, months: list[dict], area: float, split: str) 
         if month.get("gas_therms") is not None:
             gas_m.append(month["gas_therms"])
             gas_s.append(gas)
-    rows = [_assess_row(split, "electricity", "monthly", electric_m, electric_s)]
+    rows = [_assess_row(split, "electricity", "monthly", electric_m, electric_s, claim)]
     if len(gas_m) >= 2:
-        rows.append(_assess_row(split, "natural_gas", "monthly", gas_m, gas_s))
+        rows.append(_assess_row(split, "natural_gas", "monthly", gas_m, gas_s, claim))
     return rows
 
 
-def _assess_row(split, fuel, granularity, measured, simulated) -> dict:
+def _assess_row(split, fuel, granularity, measured, simulated, claim: str | None = None) -> dict:
     stats = assess(measured, simulated, granularity)
+    if claim == "screening":
+        stats = {**stats, "claim": "screening", "pass": None, "limits": None}
     return {"split": split, "fuel": fuel, **stats}
 
 
@@ -674,10 +683,18 @@ def _cv_above(job: Job, limit: float) -> bool:
 
 
 def active_version(session: Session, site_id: str) -> ModelVersion | None:
-    return session.scalar(
+    tenant = current_tenant(session)
+    active = session.scalar(
         select(ModelVersion).where(
-            ModelVersion.tenant_id == current_tenant(session),
+            ModelVersion.tenant_id == tenant,
             ModelVersion.site_id == site_id,
             ModelVersion.status == "active",
         )
     )
+    if active is not None:
+        return active
+    return session.scalars(
+        select(ModelVersion)
+        .where(ModelVersion.tenant_id == tenant, ModelVersion.site_id == site_id, ModelVersion.status == "screening")
+        .order_by(ModelVersion.created_at.desc())
+    ).first()

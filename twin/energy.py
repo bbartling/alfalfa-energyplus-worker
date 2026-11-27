@@ -1,115 +1,105 @@
-"""Summary energy model used to calibrate schedules and setpoints.
+"""Screening change-point model for monthly bills.
 
-Electricity is lighting (from occupied hours), fans (from run hours), and
-cooling (from CDD, the occupied cooling setpoint, outdoor-air fraction, and COP).
-Gas is infiltration heating from HDD and the occupied heating setpoint.
-
-This is the model the quickstart calibrates. Guideline 14 itself is computed by
-`guideline14` from any paired meter series, including EnergyPlus meter output.
+Electricity is a baseload (occupied hours), a fan term from average run hours,
+and cooling proportional to cooling degree-days at a balance point that moves
+with the occupied cooling setpoint. Gas is heating degree-days at a balance
+point that moves with the heating setpoint. This is an ASHRAE-style inverse
+model for a quick screening estimate. It is not a Guideline 14 calibration.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+FAN_W_M2 = 1.5
+COOL_BALANCE_C = 24.0
+HEAT_BALANCE_C = 21.0
+
 
 @dataclass(frozen=True)
 class Params:
-    lighting_w_m2: float
-    cooling_cop: float
-    infiltration_ach: float
+    base_w_m2: float
+    cooling_kwh_per_cdd_m2: float
+    heating_therm_per_hdd_m2: float
 
     def as_dict(self) -> dict:
         return {
-            "lighting_w_m2": self.lighting_w_m2,
-            "cooling_cop": self.cooling_cop,
-            "infiltration_ach": self.infiltration_ach,
+            "base_w_m2": self.base_w_m2,
+            "cooling_kwh_per_cdd_m2": self.cooling_kwh_per_cdd_m2,
+            "heating_therm_per_hdd_m2": self.heating_therm_per_hdd_m2,
         }
 
 
-def electric_kwh(
-    params: Params,
-    *,
-    area: float,
-    days: float,
-    occupied_hours: float,
-    run_hours: float,
-    cooling_sp: float,
-    oa_fraction: float,
-    cdd: float,
-) -> float:
-    lights = params.lighting_w_m2 * area * occupied_hours / 1000
-    fans = 2.0 * area * run_hours / 1000
-    drive = max(0.0, 25.0 - cooling_sp)
-    cooling = cdd * area * drive * (1 + oa_fraction) / params.cooling_cop / 50
-    return lights + fans + cooling
+def adjusted_cdd(cdd: float, days: float, cooling_sp: float) -> float:
+    """Degree-days at base 18 °C, shifted when the cooling setpoint leaves 24 °C."""
+    return max(0.0, cdd - days * (cooling_sp - COOL_BALANCE_C))
 
 
-def gas_therms(
-    params: Params,
-    *,
-    area: float,
-    heating_sp: float,
-    oa_fraction: float,
-    hdd: float,
-) -> float:
-    drive = max(0.0, heating_sp - 16.0)
-    return params.infiltration_ach * hdd * area * drive * (1 + oa_fraction) / 8000
+def adjusted_hdd(hdd: float, days: float, heating_sp: float) -> float:
+    """Degree-days at base 18 °C, shifted when the heating setpoint leaves 21 °C."""
+    return max(0.0, hdd + days * (heating_sp - HEAT_BALANCE_C))
 
 
-LIGHTING_GRID = (6.0, 8.0, 10.0, 12.0, 14.0)
-COP_GRID = (2.5, 3.0, 3.5, 4.0, 4.5)
-ACH_GRID = (0.2, 0.4, 0.6, 0.8, 1.0)
+def electric_kwh(params: Params, *, area: float, month: dict) -> float:
+    baseload = params.base_w_m2 * area * month["occupied_hours"] / 1000
+    fans = FAN_W_M2 * area * month["run_hours"] / 1000
+    cooling = params.cooling_kwh_per_cdd_m2 * area * adjusted_cdd(month["cdd"], month["days"], month["cooling_sp"])
+    return baseload + fans + cooling
 
 
-def search(months: list[dict], area: float, limit: int | None = None) -> list[tuple[Params, float]]:
-    """Return parameter sets from best to worst for the training months."""
-    ranked: list[tuple[Params, float]] = []
-    for lighting in LIGHTING_GRID:
-        for cop in COP_GRID:
-            for ach in ACH_GRID:
-                params = Params(lighting, cop, ach)
-                ranked.append((params, _score(params, months, area)))
-    ranked.sort(key=lambda item: item[1])
-    if limit is not None:
-        return ranked[:limit]
-    return ranked
-
-
-def _score(params: Params, months: list[dict], area: float) -> float:
-    if not months:
-        return 1e9
-    electric_error = 0.0
-    gas_error = 0.0
-    for month in months:
-        predicted_e, predicted_g = predict(params, month, area)
-        electric_error += _relative(month["electric_kwh"], predicted_e)
-        if month.get("gas_therms") is not None:
-            gas_error += _relative(month["gas_therms"], predicted_g)
-    return electric_error + gas_error
-
-
-def _relative(actual: float, predicted: float) -> float:
-    scale = max(abs(actual), 1.0)
-    return ((actual - predicted) / scale) ** 2
+def gas_therms(params: Params, *, area: float, month: dict) -> float:
+    heating = params.heating_therm_per_hdd_m2 * area * adjusted_hdd(month["hdd"], month["days"], month["heating_sp"])
+    return heating
 
 
 def predict(params: Params, month: dict, area: float) -> tuple[float, float]:
-    electric = electric_kwh(
-        params,
-        area=area,
-        days=month["days"],
-        occupied_hours=month["occupied_hours"],
-        run_hours=month["run_hours"],
-        cooling_sp=month["cooling_sp"],
-        oa_fraction=month["oa_fraction"],
-        cdd=month["cdd"],
-    )
-    gas = gas_therms(
-        params,
-        area=area,
-        heating_sp=month["heating_sp"],
-        oa_fraction=month["oa_fraction"],
-        hdd=month["hdd"],
-    )
-    return electric, gas
+    return electric_kwh(params, area=area, month=month), gas_therms(params, area=area, month=month)
+
+
+def fit(months: list[dict], area: float) -> Params:
+    """Least squares for baseload, cooling slope, and heating slope."""
+    if len(months) < 3:
+        raise ValueError("need at least three months to fit a change-point model")
+    xs, zs, ys, ws, gs = [], [], [], [], []
+    for month in months:
+        fans = FAN_W_M2 * area * month["run_hours"] / 1000
+        xs.append(area * month["occupied_hours"] / 1000)
+        zs.append(area * adjusted_cdd(month["cdd"], month["days"], month["cooling_sp"]))
+        ys.append(month["electric_kwh"] - fans)
+        ws.append(area * adjusted_hdd(month["hdd"], month["days"], month["heating_sp"]))
+        gs.append(month.get("gas_therms") or 0.0)
+    base, cooling = _solve2(xs, zs, ys)
+    heating = _solve1(ws, gs) if any(item > 0 for item in gs) else 0.0
+    return Params(max(0.0, base), max(0.0, cooling), max(0.0, heating))
+
+
+def leave_one_out(months: list[dict], area: float) -> list[Params]:
+    fitted = []
+    for index in range(len(months)):
+        sample = months[:index] + months[index + 1 :]
+        try:
+            fitted.append(fit(sample, area))
+        except ValueError:
+            continue
+    return fitted
+
+
+def _solve2(xs: list[float], zs: list[float], ys: list[float]) -> tuple[float, float]:
+    sxx = sum(x * x for x in xs)
+    szz = sum(z * z for z in zs)
+    sxz = sum(x * z for x, z in zip(xs, zs, strict=True))
+    sxy = sum(x * y for x, y in zip(xs, ys, strict=True))
+    szy = sum(z * y for z, y in zip(zs, ys, strict=True))
+    det = sxx * szz - sxz * sxz
+    if abs(det) < 1e-9:
+        raise ValueError("change-point design is singular")
+    base = (sxy * szz - szy * sxz) / det
+    cooling = (sxx * szy - sxz * sxy) / det
+    return base, cooling
+
+
+def _solve1(xs: list[float], ys: list[float]) -> float:
+    sxx = sum(x * x for x in xs)
+    if sxx < 1e-9:
+        return 0.0
+    return sum(x * y for x, y in zip(xs, ys, strict=True)) / sxx

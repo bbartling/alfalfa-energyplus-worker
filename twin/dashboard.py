@@ -51,11 +51,20 @@ def site_page(report: dict) -> str:
         f"<h1>{escape(report['site_id'])}</h1>"
         f"<p>{escape(report['building_type'])} · {report['floor_area_m2']:.0f} m² · "
         f"{escape(report['timezone'])} · {report['months_received']} summaries</p>"
-        f"<h2>Guideline 14</h2>{cal}"
+        f"<h2>{_calibration_heading(calibration)}</h2>{cal}"
         f"<h2>ROI what-ifs</h2>{scenarios}"
         f"<h2>Setpoints</h2>{setpoints}"
     )
     return _page(report["site_id"], body)
+
+
+def _calibration_heading(calibration: dict | None) -> str:
+    if calibration is None:
+        return "Calibration"
+    engine = calibration.get("engine") or {}
+    if engine.get("name") == "energyplus" and engine.get("claim") != "screening":
+        return "Guideline 14"
+    return "Screening estimate"
 
 
 def _metric_table(metrics: list[dict]) -> str:
@@ -80,7 +89,7 @@ def _metric_table(metrics: list[dict]) -> str:
                 cv=item["cv_rmse_pct"],
                 nmbe=item["nmbe_pct"],
                 limits=limit_text,
-                tone="ok" if passed else "bad",
+                tone="ok" if passed else ("muted" if passed is None else "bad"),
                 label=label,
             )
         )
