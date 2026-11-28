@@ -16,7 +16,7 @@
     {
       "id": "ahu-1",
       "design_supply_airflow_m3_s": {
-        "value": 2.485205,
+        "value": 2.490079166666667,
         "unit": "m\u00b3/s"
       },
       "fan_design_static_pressure_pa": {
@@ -28,7 +28,7 @@
         "unit": "W"
       },
       "cooling_capacity_w": {
-        "value": 68730.6,
+        "value": 68795.37,
         "unit": "W"
       },
       "heating_capacity_w": {
@@ -43,7 +43,7 @@
     {
       "id": "ahu-2",
       "design_supply_airflow_m3_s": {
-        "value": 2.4497575,
+        "value": 2.4543725000000003,
         "unit": "m\u00b3/s"
       },
       "fan_design_static_pressure_pa": {
@@ -55,7 +55,7 @@
         "unit": "W"
       },
       "cooling_capacity_w": {
-        "value": 68252.41,
+        "value": 68313.7,
         "unit": "W"
       },
       "heating_capacity_w": {

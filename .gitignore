@@ -7,4 +7,6 @@ __pycache__/
 work/
 models/out/
 models/generated/ep-run/
+models/generated/ep-run-minute-week/
+models/generated/timeseries_representative_week_1min.csv
 models/out/

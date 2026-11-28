@@ -35,6 +35,13 @@ def load_design(path: Path | None) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _merge_design(base: dict, overrides: dict | None) -> dict:
+    merged = dict(base)
+    if overrides:
+        merged.update(overrides)
+    return merged
+
+
 def add_simulation_header(doc: IdfDocument, layout, design: dict) -> None:
     bld = layout.building
     site_name = design.get("site_name", "Chicago OHare")
@@ -58,17 +65,18 @@ def add_simulation_header(doc: IdfDocument, layout, design: dict) -> None:
             ],
         )
     )
+    run = design.get("run_period") or {}
     doc.add(
         IdfObject(
             "RunPeriod",
             [
-                "Annual",
-                1,
-                1,
-                "",
-                12,
-                31,
-                "",
+                run.get("name", "Annual"),
+                run.get("begin_month", 1),
+                run.get("begin_day", 1),
+                run.get("begin_year", ""),
+                run.get("end_month", 12),
+                run.get("end_day", 31),
+                run.get("end_year", ""),
                 "Sunday",
                 "Yes",
                 "Yes",
@@ -78,15 +86,33 @@ def add_simulation_header(doc: IdfDocument, layout, design: dict) -> None:
             ],
         )
     )
+    sim = design.get("simulation_control") or {}
+    if design.get("skip_sizing"):
+        sim = {
+            "do_zone_sizing": "No",
+            "do_system_sizing": "No",
+            "do_plant_sizing": "No",
+            "run_sizing_periods": "No",
+            "run_weather_periods": "Yes",
+            **sim,
+        }
+    defaults = {
+        "do_zone_sizing": "Yes",
+        "do_system_sizing": "Yes",
+        "do_plant_sizing": "Yes",
+        "run_sizing_periods": "Yes",
+        "run_weather_periods": "Yes",
+    }
+    merged = {**defaults, **sim}
     doc.add(
         IdfObject(
             "SimulationControl",
             [
-                "Yes",
-                "Yes",
-                "Yes",
-                "Yes",
-                "Yes",
+                merged["do_zone_sizing"],
+                merged["do_system_sizing"],
+                merged["do_plant_sizing"],
+                merged["run_sizing_periods"],
+                merged["run_weather_periods"],
             ],
         )
     )
@@ -187,9 +213,15 @@ def add_simulation_header(doc: IdfDocument, layout, design: dict) -> None:
     )
 
 
-def build_idf(layout_path: Path, design_path: Path | None, out_path: Path) -> Path:
+def build_idf(
+    layout_path: Path,
+    design_path: Path | None,
+    out_path: Path,
+    *,
+    design_overrides: dict | None = None,
+) -> Path:
     layout = load_layout(layout_path)
-    design = load_design(design_path)
+    design = _merge_design(load_design(design_path), design_overrides)
     doc = IdfDocument(version="24.2")
     add_simulation_header(doc, layout, design)
     add_schedules(doc, layout)

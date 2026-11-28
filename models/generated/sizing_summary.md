@@ -12,18 +12,18 @@
 ## AHUs
 
 ### `ahu-1`
-- Design supply airflow: 2.485205
+- Design supply airflow: 2.490079166666667
 - Fan design ΔP: None Pa
 - Fan design power: None W
-- Cooling coil: 68730.6 W
+- Cooling coil: 68795.37 W
 - Heating coil: 0.0 W
 - Minimum OA flow: None m³/s
 
 ### `ahu-2`
-- Design supply airflow: 2.4497575
+- Design supply airflow: 2.4543725000000003
 - Fan design ΔP: None Pa
 - Fan design power: None W
-- Cooling coil: 68252.41 W
+- Cooling coil: 68313.7 W
 - Heating coil: 0.0 W
 - Minimum OA flow: None m³/s
 

@@ -93,6 +93,9 @@ python3 models/build_generic_office_vav.py \
   --design models/generic_office/design_values.json \
   -o models/generated/generic_two_story_office_vav.idf
 python3 models/run_generic_office.py --layout models/layouts/default_two_story_office.json
+
+# 1-minute representative week (Jan 6–12) after annual sizing run
+python3 models/run_generic_office.py --layout models/layouts/default_two_story_office.json --timeseries-minute
 ```
 
 Artifacts land in `models/generated/`:
@@ -104,7 +107,9 @@ Artifacts land in `models/generated/`:
 | `design_values.json` | Autosized capacities, fan/pump curves (SI, stable keys) |
 | `sizing_summary.md` | Human-readable sizing summary |
 | `point_list.csv` | BACnet/Haystack/223P role mapping for sim variables |
-| `timeseries_representative_week.csv` | Hourly data for FDD / functional-test dry runs |
+| `timeseries_representative_week.csv` | Hourly AHU/VAV catalog points (averaged from zone timestep) |
+| `timeseries_representative_week_1min.csv` | Optional 1-minute week (`--timeseries-minute`) |
+| `timeseries_minute_week.meta.json` | Wall-clock runtime for the minute-week EnergyPlus run |
 | `floor_diagram.md` | Zone / floor sketch |
 
 See `models/generic_office/schema.md` for layout and `design_values.json` key documentation.

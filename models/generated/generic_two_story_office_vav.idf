@@ -3413,12 +3413,7 @@ Output:Meter,
 
 Output:Variable,
   *,
-  Air Terminal Damper Position,  !- Field 2
-  timestep;  !- Field 3
-
-Output:Variable,
-  *,
-  Air System Outdoor Air Flow Fraction,  !- Field 2
+  Fan Part Load Ratio,  !- Field 2
   timestep;  !- Field 3
 
 Output:Variable,
@@ -3428,42 +3423,22 @@ Output:Variable,
 
 Output:Variable,
   *,
-  Fan Runtime Fraction,  !- Field 2
-  timestep;  !- Field 3
-
-Output:Variable,
-  *,
-  System Node Temperature,  !- Field 2
-  timestep;  !- Field 3
-
-Output:Variable,
-  *,
-  Air Terminal Heating Coil Heating Rate,  !- Field 2
-  timestep;  !- Field 3
-
-Output:Variable,
-  *,
-  Fan Part Load Ratio,  !- Field 2
-  timestep;  !- Field 3
-
-Output:Variable,
-  *,
   Zone Air System Sensible Load,  !- Field 2
   timestep;  !- Field 3
 
 Output:Variable,
   *,
-  Coil Cooling Rate,  !- Field 2
+  System Node Mass Flow Rate,  !- Field 2
   timestep;  !- Field 3
 
 Output:Variable,
   *,
-  System Node Pressure,  !- Field 2
+  Air Terminal Damper Position,  !- Field 2
   timestep;  !- Field 3
 
 Output:Variable,
   *,
-  Zone Thermostat Cooling Setpoint Temperature,  !- Field 2
+  Air System Outdoor Air Flow Fraction,  !- Field 2
   timestep;  !- Field 3
 
 Output:Variable,
@@ -3478,7 +3453,32 @@ Output:Variable,
 
 Output:Variable,
   *,
+  Coil Cooling Rate,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  System Node Temperature,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Zone Thermostat Cooling Setpoint Temperature,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
   Coil Heating Rate,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Fan Electric Power,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  System Node Pressure,  !- Field 2
   timestep;  !- Field 3
 
 Output:Variable,
@@ -3488,10 +3488,10 @@ Output:Variable,
 
 Output:Variable,
   *,
-  System Node Mass Flow Rate,  !- Field 2
+  Fan Runtime Fraction,  !- Field 2
   timestep;  !- Field 3
 
 Output:Variable,
   *,
-  Fan Electric Power,  !- Field 2
+  Air Terminal Heating Coil Heating Rate,  !- Field 2
   timestep;  !- Field 3

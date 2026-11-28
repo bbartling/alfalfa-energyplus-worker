@@ -9,6 +9,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from .timeseries import export_timeseries_week as export_timeseries_week  # noqa: F401
+
 _SSZ_PATH = Path("eplusssz.csv")
 
 SI = {
@@ -83,38 +85,6 @@ def sizing_markdown(design: dict[str, Any]) -> str:
         )
     lines.append("")
     return "\n".join(lines)
-
-
-def export_timeseries_week(run_dir: Path, layout: dict, out_csv: Path) -> None:
-    """Export key HVAC/zone points for calendar week starting Jan 6 (representative winter week)."""
-    sql = run_dir / "eplusout.sql"
-    if not sql.is_file():
-        raise FileNotFoundError("eplusout.sql not found; enable Output:SQLite")
-    with sqlite3.connect(sql) as conn:
-        period = conn.execute(
-            "SELECT EnvironmentPeriodIndex FROM EnvironmentPeriods WHERE EnvironmentType=3 ORDER BY EnvironmentPeriodIndex DESC LIMIT 1"
-        ).fetchone()
-        if period is None:
-            raise RuntimeError("no annual environment period")
-        period_id = period[0]
-        rows = conn.execute(
-            """
-            SELECT t.Month, t.Day, t.Hour, t.Minute, d.KeyValue, d.Name, r.Value
-            FROM ReportData r
-            JOIN ReportDataDictionary d ON r.ReportDataDictionaryIndex = d.ReportDataDictionaryIndex
-            JOIN Time t ON r.TimeIndex = t.TimeIndex
-            WHERE t.EnvironmentPeriodIndex = ? AND COALESCE(t.WarmupFlag,0)=0
-              AND t.Month=1 AND t.Day BETWEEN 6 AND 12
-              AND d.ReportingFrequency='Hourly'
-            ORDER BY t.TimeIndex, d.Name, d.KeyValue
-            """,
-            (period_id,),
-        ).fetchall()
-    out_csv.parent.mkdir(parents=True, exist_ok=True)
-    with out_csv.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle)
-        writer.writerow(["month", "day", "hour", "minute", "key", "variable", "value"])
-        writer.writerows(rows)
 
 
 def _ahu_sizing(eio: str, idf: str, layout: dict) -> list[dict]:

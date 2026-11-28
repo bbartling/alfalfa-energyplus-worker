@@ -45,7 +45,10 @@ Optional file passed with `--design`. Keys override generator defaults.
 | `wall_u_value`, `roof_u_value`, `floor_u_value` | 0.35 / 0.25 / 0.3 | Envelope targets (simplified constructions). |
 | `site_name`, `latitude`, `longitude`, `time_zone`, `elevation_m` | Chicago OHare | `Site:Location`. |
 | `winter_design_db_c`, `summer_design_db_c` | -17.3 / 33.3 | `SizingPeriod:DesignDay` dry bulb. |
-| `timesteps_per_hour` | 6 | Simulation timestep. |
+| `timesteps_per_hour` | 6 | Simulation timestep (default annual path). Use **60** for 1-minute zone timestep runs. |
+| `run_period` | (annual) | Optional `{name, begin_month, begin_day, end_month, end_day}` to shorten weather runs (representative week). |
+| `simulation_control` | (all Yes) | Override `SimulationControl` flags (`do_zone_sizing`, `run_sizing_periods`, …). Minute week sets sizing periods **No**, weather **Yes**. |
+| `skip_sizing` | false | Deprecated alias: all sizing off, weather on (do not use with autosize templates). |
 | `supply_air_temp_min_c`, `supply_air_temp_max_c` | 12.8 / 15.6 | `SetpointManager:Warmest` SAT reset band. |
 | `duct_static_pressure_min_pa`, `duct_static_pressure_max_pa` | 250 / 450 | `SetpointManager:StaticPressure` band. |
 | `fan_pressure_rise_pa`, `fan_max_flow_m3_s` | 600 / 5.0 | Supply fan sizing hints. |
@@ -100,7 +103,9 @@ Stable machine-readable keys for functional-test fallbacks when BACnet/nameplate
 
 ## Sizing extraction
 
-`models/run_generic_office.py` runs EnergyPlus with `-x` (ExpandObjects) and writes `design_values.json`, `sizing_summary.md`, and `timeseries_representative_week.csv`.
+`models/run_generic_office.py` runs EnergyPlus with `-x` (ExpandObjects) and writes `design_values.json`, `sizing_summary.md`, and `timeseries_representative_week.csv` (hourly averages of zone-timestep catalog points).
+
+Optional **`--timeseries-minute`**: after the annual autosize run, simulates **Jan 6–12** at `Timestep` **60** (1-minute), exports `timeseries_representative_week_1min.csv` at **Zone Timestep** frequency, and writes `timeseries_minute_week.meta.json` (wall-clock runtime).
 
 ## CLI
 
