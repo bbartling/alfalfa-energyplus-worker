@@ -352,7 +352,6 @@ def _window_on_wall(
     head = z_base + height * 0.85
     mid_y_n = (rect.y0 + rect.y1) / 2
     mid_x = (rect.x0 + rect.x1) / 2
-    win_h = head - sill
     if "Wall-N" in wall_tag:
         win_w = rect.width * (wwr**0.5)
         x0 = mid_x - win_w / 2

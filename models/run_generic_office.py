@@ -15,11 +15,11 @@ MODELS_ROOT = Path(__file__).resolve().parent
 if str(MODELS_ROOT) not in sys.path:
     sys.path.insert(0, str(MODELS_ROOT))
 
-from build_generic_office_vav import build_idf, DEFAULT_DESIGN, DEFAULT_LAYOUT  # noqa: E402
-from generic_office.extract_sizing import export_timeseries_week, extract_all, sizing_markdown  # noqa: E402
-from generic_office.layout import load_layout  # noqa: E402
-from generic_office.points import export_point_list  # noqa: E402
-from rdf_to_layout import ttl_to_layout  # noqa: E402
+from build_generic_office_vav import DEFAULT_DESIGN, DEFAULT_LAYOUT, build_idf  # noqa: E402, I001
+from generic_office.extract_sizing import extract_all, export_timeseries_week, sizing_markdown  # noqa: E402, I001
+from generic_office.layout import load_layout  # noqa: E402, I001
+from generic_office.points import export_point_list  # noqa: E402, I001
+from rdf_to_layout import ttl_to_layout  # noqa: E402, I001
 
 
 def main() -> None:
@@ -80,7 +80,6 @@ def _default_weather(weather_file: str) -> Path:
     candidate = ep_root / "WeatherData" / weather_file
     if candidate.is_file():
         return candidate
-    twin_weather = MODELS_ROOT.parent / "models" / "weather_stations.json"
     raise FileNotFoundError(f"weather file not found: {weather_file} ({candidate})")
 
 

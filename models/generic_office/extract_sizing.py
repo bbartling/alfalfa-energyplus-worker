@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import json
-import math
 import re
 import sqlite3
 from pathlib import Path
@@ -91,7 +90,6 @@ def export_timeseries_week(run_dir: Path, layout: dict, out_csv: Path) -> None:
     sql = run_dir / "eplusout.sql"
     if not sql.is_file():
         raise FileNotFoundError("eplusout.sql not found; enable Output:SQLite")
-    columns = _timeseries_columns(layout)
     with sqlite3.connect(sql) as conn:
         period = conn.execute(
             "SELECT EnvironmentPeriodIndex FROM EnvironmentPeriods WHERE EnvironmentType=3 ORDER BY EnvironmentPeriodIndex DESC LIMIT 1"
@@ -117,10 +115,6 @@ def export_timeseries_week(run_dir: Path, layout: dict, out_csv: Path) -> None:
         writer = csv.writer(handle)
         writer.writerow(["month", "day", "hour", "minute", "key", "variable", "value"])
         writer.writerows(rows)
-
-
-def _timeseries_columns(layout: dict) -> list[str]:
-    return [p["point_id"] for p in layout.get("points", [])]
 
 
 def _ahu_sizing(eio: str, idf: str, layout: dict) -> list[dict]:
@@ -187,7 +181,7 @@ def _kg_s_to_m3_s(kg_s: float | None) -> float | None:
 def _find_fan_name(idf: str, aid: str) -> str | None:
     if not idf:
         return None
-    m = re.search(rf"Fan:VariableVolume,\s*\n\s*([^\n;]+)", idf, re.IGNORECASE)
+    m = re.search(r"Fan:VariableVolume,\s*\n\s*([^\n;]+)", idf, re.IGNORECASE)
     if not m:
         return None
     name = m.group(1).strip()
