@@ -1,0 +1,95 @@
+point_id,equipment_id,zone,role_id,energyplus_variable,energyplus_key,ashrae223_role,haystack_tags,frequency
+ahu-1.ahu-supply-air-temp,ahu-1,,ahu-supply-air-temp,System Node Temperature,ahu-1 PackagedVAV,supply-air-temp-sensor,"point,air,temp,sensor,equipRef",timestep
+ahu-1.ahu-return-air-temp,ahu-1,,ahu-return-air-temp,System Node Temperature,ahu-1 PackagedVAV,return-air-temp-sensor,"point,air,temp,sensor,equipRef",timestep
+ahu-1.ahu-mixed-air-temp,ahu-1,,ahu-mixed-air-temp,System Node Temperature,ahu-1 PackagedVAV,mixed-air-temp-sensor,"point,air,temp,sensor,equipRef",timestep
+ahu-1.ahu-outdoor-air-temp,ahu-1,,ahu-outdoor-air-temp,System Node Temperature,ahu-1 PackagedVAV,outside-air-temp-sensor,"point,air,temp,sensor,siteRef",timestep
+ahu-1.ahu-dat-setpoint,ahu-1,,ahu-dat-setpoint,Air System Cooling Coil Setpoint Temperature,ahu-1 PackagedVAV,discharge-air-temp-sp,"point,sp,air,temp,equipRef",timestep
+ahu-1.ahu-duct-static-pressure,ahu-1,,ahu-duct-static-pressure,System Node Pressure,ahu-1 PackagedVAV,duct-static-pressure-sensor,"point,air,pressure,sensor,equipRef",timestep
+ahu-1.ahu-fan-speed,ahu-1,,ahu-fan-speed,Fan Part Load Ratio,ahu-1 PackagedVAV,fan-speed-sensor,"point,fan,speed,sensor,equipRef",timestep
+ahu-1.ahu-fan-power,ahu-1,,ahu-fan-power,Fan Electric Power,ahu-1 PackagedVAV,fan-power-sensor,"point,fan,power,sensor,equipRef",timestep
+ahu-1.ahu-fan-status,ahu-1,,ahu-fan-status,Fan Runtime Fraction,ahu-1 PackagedVAV,fan-status-sensor,"point,fan,run,sensor,equipRef",timestep
+ahu-1.ahu-oa-damper,ahu-1,,ahu-oa-damper,Air System Outdoor Air Flow Fraction,ahu-1 PackagedVAV,oa-damper-position-sensor,"point,damper,oa,sensor,equipRef",timestep
+ahu-1.ahu-cooling-valve,ahu-1,,ahu-cooling-valve,Coil Part Load Ratio,ahu-1 PackagedVAV,cooling-valve-position-sensor,"point,valve,cooling,sensor,equipRef",timestep
+ahu-1.ahu-heating-valve,ahu-1,,ahu-heating-valve,Coil Part Load Ratio,ahu-1 PackagedVAV,heating-valve-position-sensor,"point,valve,heating,sensor,equipRef",timestep
+vav-f1-core.vav-zone-temp,vav-f1-core,zone-f1-core,vav-zone-temp,Zone Mean Air Temperature,zone-f1-core,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f1-core.vav-heating-sp,vav-f1-core,zone-f1-core,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f1-core,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-core.vav-cooling-sp,vav-f1-core,zone-f1-core,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f1-core,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-core.vav-airflow,vav-f1-core,zone-f1-core,vav-airflow,System Node Mass Flow Rate,zone-f1-core,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f1-core.vav-airflow-sp,vav-f1-core,zone-f1-core,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f1-core,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f1-core.vav-damper-position,vav-f1-core,zone-f1-core,vav-damper-position,Air Terminal Damper Position,zone-f1-core,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f1-core.vav-reheat-power,vav-f1-core,zone-f1-core,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f1-core,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+vav-f1-north.vav-zone-temp,vav-f1-north,zone-f1-north,vav-zone-temp,Zone Mean Air Temperature,zone-f1-north,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f1-north.vav-heating-sp,vav-f1-north,zone-f1-north,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f1-north,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-north.vav-cooling-sp,vav-f1-north,zone-f1-north,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f1-north,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-north.vav-airflow,vav-f1-north,zone-f1-north,vav-airflow,System Node Mass Flow Rate,zone-f1-north,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f1-north.vav-airflow-sp,vav-f1-north,zone-f1-north,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f1-north,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f1-north.vav-damper-position,vav-f1-north,zone-f1-north,vav-damper-position,Air Terminal Damper Position,zone-f1-north,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f1-north.vav-reheat-power,vav-f1-north,zone-f1-north,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f1-north,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+vav-f1-east.vav-zone-temp,vav-f1-east,zone-f1-east,vav-zone-temp,Zone Mean Air Temperature,zone-f1-east,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f1-east.vav-heating-sp,vav-f1-east,zone-f1-east,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f1-east,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-east.vav-cooling-sp,vav-f1-east,zone-f1-east,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f1-east,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-east.vav-airflow,vav-f1-east,zone-f1-east,vav-airflow,System Node Mass Flow Rate,zone-f1-east,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f1-east.vav-airflow-sp,vav-f1-east,zone-f1-east,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f1-east,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f1-east.vav-damper-position,vav-f1-east,zone-f1-east,vav-damper-position,Air Terminal Damper Position,zone-f1-east,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f1-east.vav-reheat-power,vav-f1-east,zone-f1-east,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f1-east,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+vav-f1-south.vav-zone-temp,vav-f1-south,zone-f1-south,vav-zone-temp,Zone Mean Air Temperature,zone-f1-south,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f1-south.vav-heating-sp,vav-f1-south,zone-f1-south,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f1-south,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-south.vav-cooling-sp,vav-f1-south,zone-f1-south,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f1-south,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-south.vav-airflow,vav-f1-south,zone-f1-south,vav-airflow,System Node Mass Flow Rate,zone-f1-south,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f1-south.vav-airflow-sp,vav-f1-south,zone-f1-south,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f1-south,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f1-south.vav-damper-position,vav-f1-south,zone-f1-south,vav-damper-position,Air Terminal Damper Position,zone-f1-south,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f1-south.vav-reheat-power,vav-f1-south,zone-f1-south,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f1-south,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+vav-f1-west.vav-zone-temp,vav-f1-west,zone-f1-west,vav-zone-temp,Zone Mean Air Temperature,zone-f1-west,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f1-west.vav-heating-sp,vav-f1-west,zone-f1-west,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f1-west,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-west.vav-cooling-sp,vav-f1-west,zone-f1-west,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f1-west,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f1-west.vav-airflow,vav-f1-west,zone-f1-west,vav-airflow,System Node Mass Flow Rate,zone-f1-west,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f1-west.vav-airflow-sp,vav-f1-west,zone-f1-west,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f1-west,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f1-west.vav-damper-position,vav-f1-west,zone-f1-west,vav-damper-position,Air Terminal Damper Position,zone-f1-west,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f1-west.vav-reheat-power,vav-f1-west,zone-f1-west,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f1-west,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+ahu-2.ahu-supply-air-temp,ahu-2,,ahu-supply-air-temp,System Node Temperature,ahu-2 PackagedVAV,supply-air-temp-sensor,"point,air,temp,sensor,equipRef",timestep
+ahu-2.ahu-return-air-temp,ahu-2,,ahu-return-air-temp,System Node Temperature,ahu-2 PackagedVAV,return-air-temp-sensor,"point,air,temp,sensor,equipRef",timestep
+ahu-2.ahu-mixed-air-temp,ahu-2,,ahu-mixed-air-temp,System Node Temperature,ahu-2 PackagedVAV,mixed-air-temp-sensor,"point,air,temp,sensor,equipRef",timestep
+ahu-2.ahu-outdoor-air-temp,ahu-2,,ahu-outdoor-air-temp,System Node Temperature,ahu-2 PackagedVAV,outside-air-temp-sensor,"point,air,temp,sensor,siteRef",timestep
+ahu-2.ahu-dat-setpoint,ahu-2,,ahu-dat-setpoint,Air System Cooling Coil Setpoint Temperature,ahu-2 PackagedVAV,discharge-air-temp-sp,"point,sp,air,temp,equipRef",timestep
+ahu-2.ahu-duct-static-pressure,ahu-2,,ahu-duct-static-pressure,System Node Pressure,ahu-2 PackagedVAV,duct-static-pressure-sensor,"point,air,pressure,sensor,equipRef",timestep
+ahu-2.ahu-fan-speed,ahu-2,,ahu-fan-speed,Fan Part Load Ratio,ahu-2 PackagedVAV,fan-speed-sensor,"point,fan,speed,sensor,equipRef",timestep
+ahu-2.ahu-fan-power,ahu-2,,ahu-fan-power,Fan Electric Power,ahu-2 PackagedVAV,fan-power-sensor,"point,fan,power,sensor,equipRef",timestep
+ahu-2.ahu-fan-status,ahu-2,,ahu-fan-status,Fan Runtime Fraction,ahu-2 PackagedVAV,fan-status-sensor,"point,fan,run,sensor,equipRef",timestep
+ahu-2.ahu-oa-damper,ahu-2,,ahu-oa-damper,Air System Outdoor Air Flow Fraction,ahu-2 PackagedVAV,oa-damper-position-sensor,"point,damper,oa,sensor,equipRef",timestep
+ahu-2.ahu-cooling-valve,ahu-2,,ahu-cooling-valve,Coil Part Load Ratio,ahu-2 PackagedVAV,cooling-valve-position-sensor,"point,valve,cooling,sensor,equipRef",timestep
+ahu-2.ahu-heating-valve,ahu-2,,ahu-heating-valve,Coil Part Load Ratio,ahu-2 PackagedVAV,heating-valve-position-sensor,"point,valve,heating,sensor,equipRef",timestep
+vav-f2-core.vav-zone-temp,vav-f2-core,zone-f2-core,vav-zone-temp,Zone Mean Air Temperature,zone-f2-core,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f2-core.vav-heating-sp,vav-f2-core,zone-f2-core,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f2-core,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-core.vav-cooling-sp,vav-f2-core,zone-f2-core,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f2-core,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-core.vav-airflow,vav-f2-core,zone-f2-core,vav-airflow,System Node Mass Flow Rate,zone-f2-core,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f2-core.vav-airflow-sp,vav-f2-core,zone-f2-core,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f2-core,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f2-core.vav-damper-position,vav-f2-core,zone-f2-core,vav-damper-position,Air Terminal Damper Position,zone-f2-core,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f2-core.vav-reheat-power,vav-f2-core,zone-f2-core,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f2-core,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+vav-f2-north.vav-zone-temp,vav-f2-north,zone-f2-north,vav-zone-temp,Zone Mean Air Temperature,zone-f2-north,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f2-north.vav-heating-sp,vav-f2-north,zone-f2-north,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f2-north,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-north.vav-cooling-sp,vav-f2-north,zone-f2-north,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f2-north,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-north.vav-airflow,vav-f2-north,zone-f2-north,vav-airflow,System Node Mass Flow Rate,zone-f2-north,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f2-north.vav-airflow-sp,vav-f2-north,zone-f2-north,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f2-north,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f2-north.vav-damper-position,vav-f2-north,zone-f2-north,vav-damper-position,Air Terminal Damper Position,zone-f2-north,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f2-north.vav-reheat-power,vav-f2-north,zone-f2-north,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f2-north,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+vav-f2-east.vav-zone-temp,vav-f2-east,zone-f2-east,vav-zone-temp,Zone Mean Air Temperature,zone-f2-east,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f2-east.vav-heating-sp,vav-f2-east,zone-f2-east,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f2-east,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-east.vav-cooling-sp,vav-f2-east,zone-f2-east,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f2-east,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-east.vav-airflow,vav-f2-east,zone-f2-east,vav-airflow,System Node Mass Flow Rate,zone-f2-east,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f2-east.vav-airflow-sp,vav-f2-east,zone-f2-east,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f2-east,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f2-east.vav-damper-position,vav-f2-east,zone-f2-east,vav-damper-position,Air Terminal Damper Position,zone-f2-east,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f2-east.vav-reheat-power,vav-f2-east,zone-f2-east,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f2-east,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+vav-f2-south.vav-zone-temp,vav-f2-south,zone-f2-south,vav-zone-temp,Zone Mean Air Temperature,zone-f2-south,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f2-south.vav-heating-sp,vav-f2-south,zone-f2-south,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f2-south,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-south.vav-cooling-sp,vav-f2-south,zone-f2-south,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f2-south,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-south.vav-airflow,vav-f2-south,zone-f2-south,vav-airflow,System Node Mass Flow Rate,zone-f2-south,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f2-south.vav-airflow-sp,vav-f2-south,zone-f2-south,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f2-south,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f2-south.vav-damper-position,vav-f2-south,zone-f2-south,vav-damper-position,Air Terminal Damper Position,zone-f2-south,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f2-south.vav-reheat-power,vav-f2-south,zone-f2-south,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f2-south,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep
+vav-f2-west.vav-zone-temp,vav-f2-west,zone-f2-west,vav-zone-temp,Zone Mean Air Temperature,zone-f2-west,zone-air-temp-sensor,"point,air,temp,zone,sensor,spaceRef",timestep
+vav-f2-west.vav-heating-sp,vav-f2-west,zone-f2-west,vav-heating-sp,Zone Thermostat Heating Setpoint Temperature,zone-f2-west,zone-heating-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-west.vav-cooling-sp,vav-f2-west,zone-f2-west,vav-cooling-sp,Zone Thermostat Cooling Setpoint Temperature,zone-f2-west,zone-cooling-temp-sp,"point,sp,air,temp,zone,spaceRef",timestep
+vav-f2-west.vav-airflow,vav-f2-west,zone-f2-west,vav-airflow,System Node Mass Flow Rate,zone-f2-west,supply-airflow-sensor,"point,air,flow,sensor,equipRef",timestep
+vav-f2-west.vav-airflow-sp,vav-f2-west,zone-f2-west,vav-airflow-sp,Air Terminal Minimum Air Flow,zone-f2-west,supply-airflow-sp,"point,sp,air,flow,equipRef",timestep
+vav-f2-west.vav-damper-position,vav-f2-west,zone-f2-west,vav-damper-position,Air Terminal Damper Position,zone-f2-west,damper-position-sensor,"point,damper,sensor,equipRef",timestep
+vav-f2-west.vav-reheat-power,vav-f2-west,zone-f2-west,vav-reheat-power,Air Terminal Heating Coil Heating Rate,zone-f2-west,reheat-power-sensor,"point,heating,power,sensor,equipRef",timestep

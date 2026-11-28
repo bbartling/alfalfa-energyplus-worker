@@ -30,9 +30,12 @@ def add_schedules(doc: IdfDocument, layout: Layout) -> None:
                         "For: Weekends",
                         "Until: 24:00",
                         0.05,
-                        "For: Holidays",
-                        "Until: 24:00",
-                        0.05,
+                "For: Holidays",
+                "Until: 24:00",
+                0.05,
+                "For: AllOtherDays",
+                "Until: 24:00",
+                0.05,
                     ],
                 )
             )
@@ -63,8 +66,17 @@ def _core_schedules() -> list[IdfObject]:
             "ScheduleTypeLimits",
             [
                 "Temperature",
-                "40",
-                "90",
+                -60,
+                200,
+                "CONTINUOUS",
+            ],
+        ),
+        IdfObject(
+            "ScheduleTypeLimits",
+            [
+                "Any Number",
+                -100,
+                1000,
                 "CONTINUOUS",
             ],
         ),

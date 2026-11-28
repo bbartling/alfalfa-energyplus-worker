@@ -72,6 +72,43 @@ make alfalfa
 
 Images are pinned to the Alfalfa revision `af3caee`. See [docs/simpler-alternative.md](docs/simpler-alternative.md) for when the single container is enough.
 
+## Generic office EnergyPlus prototype (VAV functional test)
+
+The `models/` tree builds a **parameterized, RDF-driven** two-story VAV office (~9 290 m², Chicago 4A) for HVAC functional-test and FDD prototyping. EnergyPlus **24.2** matches the twin worker image; packaged VAV AHUs are emitted as `HVACTemplate:*` objects and expanded at run time (`energyplus -x`).
+
+**Climate:** ASHRAE **4A**, `USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw`.
+
+**Two RTUs (one per floor):** each floor has independent peak loads and ducts; separate air loops mirror common rooftop-unit zoning and keep VAV terminal counts manageable (~5 zones × 2 floors).
+
+### Regenerate from RDF, layout JSON, or defaults
+
+```bash
+# RDF/Turtle → layout JSON → IDF → simulate → artifacts
+export ENERGYPLUS_BIN=/path/to/Energyplus/energyplus
+python3 models/run_generic_office.py --ttl models/sample_building.ttl
+
+# Or explicit layout + design overrides
+python3 models/build_generic_office_vav.py \
+  --layout models/layouts/default_two_story_office.json \
+  --design models/generic_office/design_values.json \
+  -o models/generated/generic_two_story_office_vav.idf
+python3 models/run_generic_office.py --layout models/layouts/default_two_story_office.json
+```
+
+Artifacts land in `models/generated/`:
+
+| Output | Purpose |
+| --- | --- |
+| `generic_two_story_office_vav.idf` | Reproducible model |
+| `layout.json` | AHU/VAV/zone graph (from TTL when `--ttl` is used) |
+| `design_values.json` | Autosized capacities, fan/pump curves (SI, stable keys) |
+| `sizing_summary.md` | Human-readable sizing summary |
+| `point_list.csv` | BACnet/Haystack/223P role mapping for sim variables |
+| `timeseries_representative_week.csv` | Hourly data for FDD / functional-test dry runs |
+| `floor_diagram.md` | Zone / floor sketch |
+
+See `models/generic_office/schema.md` for layout and `design_values.json` key documentation.
+
 ## Security
 
 The quickstart binds `127.0.0.1:18080` only and runs with `TWIN_ENV=demo`. It does not bind port 80. `TWIN_ENV=prod` refuses to start when the bootstrap key is missing, is `local-demo-key`, or is shorter than 32 characters, and it refuses an open dashboard. API keys are tenant scoped: a key sees only its tenant's sites, jobs, and webhooks. Put your own TLS proxy in front. Alfalfa is not authenticated upstream, so leave it on the internal network.

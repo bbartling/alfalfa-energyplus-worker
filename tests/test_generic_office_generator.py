@@ -19,10 +19,9 @@ def test_build_default_layout(tmp_path: Path) -> None:
     build_idf(layout, MODELS / "generic_office" / "design_values.json", out)
     text = out.read_text(encoding="utf-8")
     assert text.startswith("Version,")
-    assert "AirTerminal:SingleDuct:VAV:Reheat" in text
-    assert "SetpointManager:Warmest" in text
-    assert "SetpointManager:StaticPressure" in text
-    assert text.count("Sizing:Zone,") == 10
+    assert "HVACTemplate:System:PackagedVAV" in text
+    assert "HVACTemplate:Zone:VAV" in text
+    assert text.count("HVACTemplate:Zone:VAV") == 10
 
 
 def test_layout_defaults_ahus() -> None:
@@ -45,3 +44,21 @@ def test_layout_defaults_ahus() -> None:
     assert len(layout.ahus) == 2
     assert len(layout.all_vavs()) == 10
     assert layout.all_vavs()[0].reheat == "electric"
+
+
+def test_rdf_converter() -> None:
+    import json
+    import sys
+
+    if str(MODELS) not in sys.path:
+        sys.path.insert(0, str(MODELS))
+    from rdf_to_layout import ttl_to_layout
+
+    layout = ttl_to_layout(
+        (MODELS / "sample_building.ttl").read_text(encoding="utf-8"),
+        "4A",
+        "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw",
+    )
+    assert len(layout["ahus"]) == 2
+    assert sum(len(a["vavs"]) for a in layout["ahus"]) == 10
+    json.dumps(layout)

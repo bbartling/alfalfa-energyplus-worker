@@ -64,9 +64,43 @@ Optional file passed with `--design`. Keys override generator defaults.
 - `Sizing:Zone`, `Sizing:System`, and `DesignSpecification:OutdoorAir` (ASHRAE 62.1-style people + area method, simplified)
 - `Output:Variable` requests aligned with `generic_office/points.py` for BACnet-style mapping (no EMS)
 
+## RDF / Turtle (`models/rdf_to_layout.py`)
+
+Shipped example: `models/sample_building.ttl` (Brick + Haystack tags + ASHRAE 223P roles).
+
+```bash
+python3 models/rdf_to_layout.py models/sample_building.ttl -o models/generated/layout.json
+```
+
+Triples use one predicate per line (`ex:rtu-1 brick:feeds ex:vav-f1-core .`). The converter discovers AHUs (`brick:Rooftop_Unit`), VAVs (`brick:VAV`), zone feeds, reheat type, and floor metadata.
+
+## `design_values.json` (post-autosize)
+
+Stable machine-readable keys for functional-test fallbacks when BACnet/nameplate data is missing. All scalar capacities use `{ "value": <float|null>, "unit": "<SI>" }`.
+
+| Path | Description |
+| --- | --- |
+| `schema_version` | Always `1.0`. |
+| `units` | Unit strings for documented fields. |
+| `climate` | Echo of layout climate. |
+| `ahus[].id` | Layout AHU id (`ahu-1`, `rtu-1`, …). |
+| `ahus[].design_supply_airflow_m3_s` | Design primary air from system sizing. |
+| `ahus[].fan_design_static_pressure_pa` | Fan design pressure rise. |
+| `ahus[].fan_design_power_w` | Fan design shaft/brake power when available. |
+| `ahus[].cooling_capacity_w` / `heating_capacity_w` | Coil autosize results. |
+| `ahus[].minimum_oa_flow_m3_s` | Minimum outdoor-air design flow. |
+| `vavs[].id` / `zone` / `reheat_type` | Terminal metadata. |
+| `vavs[].max_airflow_m3_s` / `min_airflow_m3_s` | Terminal flow limits. |
+| `vavs[].reheat_capacity_w` | Zone reheat coil capacity. |
+| `pumps[]` | Plant pumps when present (`design_flow_m3_s`, `design_head_pa`, `design_power_w`). |
+| `loops[]` | Plant loops (`design_loop_delta_p_pa`). |
+| `curves.fans[]` | Part-load **flow / pressure / power** points for operating charts (SI). |
+| `curves.pumps[]` | Pump part-load curves when present. |
+| `performance` | Annual EUI, electricity, gas, unmet hours; `estimation_method` documents the source. |
+
 ## Sizing extraction
 
-After a simulation, `generic_office/extract_sizing.py` parses `eplusout.eio` zone/system sizing lines. Tabular HTML/CSV parsing is stubbed.
+`models/run_generic_office.py` runs EnergyPlus with `-x` (ExpandObjects) and writes `design_values.json`, `sizing_summary.md`, and `timeseries_representative_week.csv`.
 
 ## CLI
 

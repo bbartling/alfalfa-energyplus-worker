@@ -3,7 +3,7 @@
   "equipment_w_per_m2": 10.8,
   "people_per_m2": 0.05,
   "story_height_fraction": 0.88,
-  "window_wall_ratio": 0.35,
+  "window_wall_ratio": 0.0,
   "wall_u_value": 0.35,
   "roof_u_value": 0.25,
   "floor_u_value": 0.3,

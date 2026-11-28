@@ -1,0 +1,95 @@
+@prefix brick: <https://brickschema.org/schema/Brick#> .
+@prefix haystack: <https://project-haystack.org/def/> .
+@prefix ashrae223: <https://open223.info/ontology/223#> .
+@prefix ex: <http://example.org/generic-office/> .
+
+ex:building a brick:Building .
+ex:building a ashrae223:Building .
+ex:building haystack:tag "building" .
+ex:building haystack:floors "2" .
+ex:building haystack:footprintLength "76.2" .
+ex:building haystack:footprintWidth "60.96" .
+ex:building haystack:floorToFloor "3.96" .
+ex:building haystack:totalArea "9290" .
+
+ex:rtu-1 a brick:Rooftop_Unit .
+ex:rtu-1 a ashrae223:AirHandlingUnit .
+ex:rtu-1 haystack:tag "equip,ahu,rtu" .
+ex:rtu-1 haystack:floor "1" .
+ex:rtu-1 brick:feeds ex:vav-f1-core .
+ex:rtu-1 brick:feeds ex:vav-f1-north .
+ex:rtu-1 brick:feeds ex:vav-f1-east .
+ex:rtu-1 brick:feeds ex:vav-f1-south .
+ex:rtu-1 brick:feeds ex:vav-f1-west .
+
+ex:rtu-2 a brick:Rooftop_Unit .
+ex:rtu-2 a ashrae223:AirHandlingUnit .
+ex:rtu-2 haystack:tag "equip,ahu,rtu" .
+ex:rtu-2 haystack:floor "2" .
+ex:rtu-2 brick:feeds ex:vav-f2-core .
+ex:rtu-2 brick:feeds ex:vav-f2-north .
+ex:rtu-2 brick:feeds ex:vav-f2-east .
+ex:rtu-2 brick:feeds ex:vav-f2-south .
+ex:rtu-2 brick:feeds ex:vav-f2-west .
+
+ex:vav-f1-core a brick:VAV .
+ex:vav-f1-core a ashrae223:VariableAirVolumeBox .
+ex:vav-f1-core brick:feeds ex:zone-f1-core .
+ex:vav-f1-core brick:hasReheatType brick:Electric_Heating .
+ex:vav-f1-core haystack:floor "1" .
+
+ex:vav-f1-north a brick:VAV .
+ex:vav-f1-north brick:feeds ex:zone-f1-north .
+ex:vav-f1-north brick:hasReheatType brick:Electric_Heating .
+ex:vav-f1-north haystack:floor "1" .
+
+ex:vav-f1-east a brick:VAV .
+ex:vav-f1-east brick:feeds ex:zone-f1-east .
+ex:vav-f1-east brick:hasReheatType brick:Electric_Heating .
+ex:vav-f1-east haystack:floor "1" .
+
+ex:vav-f1-south a brick:VAV .
+ex:vav-f1-south brick:feeds ex:zone-f1-south .
+ex:vav-f1-south brick:hasReheatType brick:Electric_Heating .
+ex:vav-f1-south haystack:floor "1" .
+
+ex:vav-f1-west a brick:VAV .
+ex:vav-f1-west brick:feeds ex:zone-f1-west .
+ex:vav-f1-west brick:hasReheatType brick:Electric_Heating .
+ex:vav-f1-west haystack:floor "1" .
+
+ex:vav-f2-core a brick:VAV .
+ex:vav-f2-core brick:feeds ex:zone-f2-core .
+ex:vav-f2-core brick:hasReheatType brick:Electric_Heating .
+ex:vav-f2-core haystack:floor "2" .
+
+ex:vav-f2-north a brick:VAV .
+ex:vav-f2-north brick:feeds ex:zone-f2-north .
+ex:vav-f2-north brick:hasReheatType brick:Electric_Heating .
+ex:vav-f2-north haystack:floor "2" .
+
+ex:vav-f2-east a brick:VAV .
+ex:vav-f2-east brick:feeds ex:zone-f2-east .
+ex:vav-f2-east brick:hasReheatType brick:Electric_Heating .
+ex:vav-f2-east haystack:floor "2" .
+
+ex:vav-f2-south a brick:VAV .
+ex:vav-f2-south brick:feeds ex:zone-f2-south .
+ex:vav-f2-south brick:hasReheatType brick:Electric_Heating .
+ex:vav-f2-south haystack:floor "2" .
+
+ex:vav-f2-west a brick:VAV .
+ex:vav-f2-west brick:feeds ex:zone-f2-west .
+ex:vav-f2-west brick:hasReheatType brick:Electric_Heating .
+ex:vav-f2-west haystack:floor "2" .
+
+ex:zone-f1-core a brick:Zone .
+ex:zone-f1-north a brick:Zone .
+ex:zone-f1-east a brick:Zone .
+ex:zone-f1-south a brick:Zone .
+ex:zone-f1-west a brick:Zone .
+ex:zone-f2-core a brick:Zone .
+ex:zone-f2-north a brick:Zone .
+ex:zone-f2-east a brick:Zone .
+ex:zone-f2-south a brick:Zone .
+ex:zone-f2-west a brick:Zone .

@@ -89,6 +89,7 @@ def add_geometry(doc: IdfDocument, layout: Layout, design: dict) -> None:
         rect = zone_for_vav(vav, rects)
         z_elev = (vav.floor - 1) * building.floor_to_floor_m
         zone_name = vav.zone
+        volume = max(rect.area_m2 * wall_height, 1.0)
         doc.add(
             IdfObject(
                 "Zone",
@@ -97,16 +98,15 @@ def add_geometry(doc: IdfDocument, layout: Layout, design: dict) -> None:
                     0,
                     0,
                     0,
-                    0,
-                    1,
-                    1,
-                    "autocalculate",
-                    "autocalculate",
-                    vav.floor,
                     z_elev,
+                    1,
+                    1,
+                    wall_height,
+                    volume,
                 ],
             )
         )
+        footprint = Rect2D(0, 0, building.footprint_length_m, building.footprint_width_m)
         doc.extend(
             _zone_surfaces(
                 zone_name,
@@ -114,6 +114,7 @@ def add_geometry(doc: IdfDocument, layout: Layout, design: dict) -> None:
                 z_elev,
                 wall_height,
                 design,
+                footprint,
             )
         )
         area = rect.area_m2
@@ -127,13 +128,12 @@ def add_geometry(doc: IdfDocument, layout: Layout, design: dict) -> None:
                     "Watts/Area",
                     "",
                     floor_mult,
-                    area,
                     "",
                     0,
-                    f"{zone_name} Lights",
                     0.2,
                     0.4,
-                    0.2,
+                    0,
+                    f"{zone_name} Lights",
                 ],
             )
         )
@@ -147,13 +147,10 @@ def add_geometry(doc: IdfDocument, layout: Layout, design: dict) -> None:
                     "Watts/Area",
                     "",
                     equip_mult,
-                    area,
                     "",
                     0,
-                    f"{zone_name} Equipment",
                     0.3,
                     0.2,
-                    0.05,
                 ],
             )
         )
@@ -165,13 +162,12 @@ def add_geometry(doc: IdfDocument, layout: Layout, design: dict) -> None:
                     zone_name,
                     f"{zone_name} Occupancy Schedule",
                     "People",
-                    "",
                     people_per_m2 * area,
                     "",
                     "",
-                    "Activity Schedule",
                     0.3,
-                    "autocalculate",
+                    "",
+                    "Activity Schedule",
                 ],
             )
         )
@@ -215,67 +211,56 @@ def _envelope_materials(design: dict) -> list[IdfObject]:
     ]
 
 
+def _wall_boundary(zone: str, wall_tag: str, footprint: Rect2D) -> tuple[str, str]:
+    """Return (outside_boundary, construction) for a zone wall."""
+    if zone.endswith("-north") and wall_tag == "Wall-N":
+        return "Outdoors", "Ext Wall"
+    if zone.endswith("-south") and wall_tag == "Wall-S":
+        return "Outdoors", "Ext Wall"
+    if zone.endswith("-east") and wall_tag == "Wall-E":
+        return "Outdoors", "Ext Wall"
+    if zone.endswith("-west") and wall_tag == "Wall-W":
+        return "Outdoors", "Ext Wall"
+    return "Adiabatic", "Int Partition"
+
+
 def _zone_surfaces(
     zone: str,
     rect: Rect2D,
     z_base: float,
     height: float,
     design: dict,
+    footprint: Rect2D,
 ) -> list[IdfObject]:
     wwr = float(design.get("window_wall_ratio", 0.35))
     objs: list[IdfObject] = []
     faces = [
         ("Floor", "Ground", (rect.x0, rect.y0, rect.x1, rect.y1), "Ext Floor", z_base),
         ("Roof", "Outdoors", (rect.x0, rect.y0, rect.x1, rect.y1), "Ext Roof", z_base),
-        (
-            "Wall-N",
-            "Outdoors",
-            (rect.x0, rect.y1, rect.x1, rect.y1),
-            "Ext Wall",
-            z_base,
-            True,
-        ),
-        (
-            "Wall-S",
-            "Outdoors",
-            (rect.x0, rect.y0, rect.x1, rect.y0),
-            "Ext Wall",
-            z_base,
-            True,
-        ),
-        (
-            "Wall-E",
-            "Outdoors",
-            (rect.x1, rect.y0, rect.x1, rect.y1),
-            "Ext Wall",
-            z_base,
-            True,
-        ),
-        (
-            "Wall-W",
-            "Outdoors",
-            (rect.x0, rect.y0, rect.x0, rect.y1),
-            "Ext Wall",
-            z_base,
-            True,
-        ),
+        ("Wall-N", "Wall-N", (rect.x0, rect.y1, rect.x1, rect.y1), "Ext Wall", z_base, True),
+        ("Wall-S", "Wall-S", (rect.x0, rect.y0, rect.x1, rect.y0), "Ext Wall", z_base, True),
+        ("Wall-E", "Wall-E", (rect.x1, rect.y0, rect.x1, rect.y1), "Ext Wall", z_base, True),
+        ("Wall-W", "Wall-W", (rect.x0, rect.y0, rect.x0, rect.y1), "Ext Wall", z_base, True),
     ]
     for spec in faces:
-        name, boundary, geom, construction = spec[0], spec[1], spec[2], spec[3]
+        wall_tag, _, geom, _default_construction = spec[0], spec[1], spec[2], spec[3]
         z0 = spec[4] if len(spec) > 4 else z_base
         is_wall = len(spec) > 5 and spec[5]
-        if name == "Floor":
+        if wall_tag == "Floor":
             xy = [(geom[0], geom[1]), (geom[2], geom[1]), (geom[2], geom[3]), (geom[0], geom[3])]
-            sur = _detailed_surface(zone, f"{zone} {name}", boundary, xy, z0, 0, construction)
-        elif name == "Roof":
+            sur = _detailed_surface(zone, f"{zone} {wall_tag}", "Ground", xy, z0, 0, "Ext Floor")
+        elif wall_tag == "Roof":
             xy = [(geom[0], geom[1]), (geom[2], geom[1]), (geom[2], geom[3]), (geom[0], geom[3])]
-            sur = _detailed_surface(zone, f"{zone} {name}", boundary, xy, z0, height, construction)
+            sur = _detailed_surface(zone, f"{zone} {wall_tag}", "Outdoors", xy, z0, height, "Ext Roof")
         else:
             x0, y0, x1, y1 = geom
-            sur = _wall_surface(zone, f"{zone} {name}", boundary, x0, y0, x1, y1, z0, height, construction)
+            boundary, construction = _wall_boundary(zone, wall_tag, footprint)
+            sur = _wall_surface(zone, f"{zone} {wall_tag}", boundary, x0, y0, x1, y1, z0, height, construction)
         objs.append(sur)
         if is_wall and boundary == "Outdoors" and wwr > 0:
-            objs.append(_window_on_wall(f"{zone} {name} Win", zone, f"{zone} {name}", rect, name, z0, height, wwr))
+            objs.append(
+                _window_on_wall(f"{zone} {wall_tag} Win", zone, f"{zone} {wall_tag}", rect, wall_tag, z0, height, wwr)
+            )
     return objs
 
 
@@ -293,6 +278,8 @@ def _wall_surface(
 ) -> IdfObject:
     z_top = z_base + height
     verts = [(x0, y0, z_base), (x1, y1, z_base), (x1, y1, z_top), (x0, y0, z_top)]
+    sun = "SunExposed" if boundary == "Outdoors" else "NoSun"
+    wind = "WindExposed" if boundary == "Outdoors" else ""
     fields: list[str | float | int | None] = [
         name,
         "Wall",
@@ -300,9 +287,10 @@ def _wall_surface(
         zone,
         "",
         boundary,
-        "SunExposed" if boundary == "Outdoors" else "NoSun",
-        "WindExposed" if boundary == "Outdoors" else "NoWind",
-        1,
+        "",
+        sun,
+        wind,
+        0.5 if boundary == "Outdoors" else 0,
         len(verts),
     ]
     for x, y, z in verts:
@@ -329,16 +317,20 @@ def _detailed_surface(
         x0, y0 = xy[0]
         x1, y1 = xy[1]
         verts = [(x0, y0, z_base), (x1, y1, z_base), (x1, y1, z_top), (x0, y0, z_top)]
+    surface_type = "Wall" if "Wall" in name else ("Roof" if "Roof" in name else "Floor")
+    sun = "SunExposed" if boundary == "Outdoors" else "NoSun"
+    wind = "WindExposed" if boundary == "Outdoors" else ""
     fields: list[str | float | int | None] = [
         name,
-        "Wall" if "Wall" in name else ("Roof" if "Roof" in name else "Floor"),
+        surface_type,
         construction,
         zone,
         "",
         boundary,
-        "SunExposed" if boundary == "Outdoors" else "NoSun",
-        "WindExposed" if boundary == "Outdoors" else "NoWind",
-        1,
+        "",
+        sun,
+        wind,
+        0.5 if boundary == "Outdoors" else 0,
         len(verts),
     ]
     for x, y, z in verts:
@@ -383,11 +375,9 @@ def _window_on_wall(
         "Window",
         wall,
         "",
-        1,
-        sill,
-        win_h,
-        "",
         0.5,
+        "",
+        1,
         len(verts),
     ]
     for x, y, z in verts:

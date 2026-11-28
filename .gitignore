@@ -6,3 +6,5 @@ __pycache__/
 
 work/
 models/out/
+models/generated/ep-run/
+models/out/
