@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0",
+  "climate": {
+    "ashrae_climate_zone": "4A",
+    "weather_file": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+  },
+  "building": {
+    "floors": 2,
+    "footprint_length_m": 76.2,
+    "footprint_width_m": 60.96,
+    "floor_to_floor_m": 3.96,
+    "total_area_m2": 9290.0
+  },
+  "ahus": [
+    {
+      "id": "rtu-1",
+      "floor": 1,
+      "gas_preheat": false,
+      "vavs": [
+        {
+          "id": "vav-f1-core",
+          "zone": "zone-f1-core",
+          "reheat": "electric",
+          "floor": 1,
+          "perimeter": "core"
+        },
+        {
+          "id": "vav-f1-north",
+          "zone": "zone-f1-north",
+          "reheat": "electric",
+          "floor": 1,
+          "perimeter": "north"
+        },
+        {
+          "id": "vav-f1-east",
+          "zone": "zone-f1-east",
+          "reheat": "electric",
+          "floor": 1,
+          "perimeter": "east"
+        },
+        {
+          "id": "vav-f1-south",
+          "zone": "zone-f1-south",
+          "reheat": "electric",
+          "floor": 1,
+          "perimeter": "south"
+        },
+        {
+          "id": "vav-f1-west",
+          "zone": "zone-f1-west",
+          "reheat": "electric",
+          "floor": 1,
+          "perimeter": "west"
+        }
+      ]
+    },
+    {
+      "id": "rtu-2",
+      "floor": 2,
+      "gas_preheat": false,
+      "vavs": [
+        {
+          "id": "vav-f2-core",
+          "zone": "zone-f2-core",
+          "reheat": "electric",
+          "floor": 2,
+          "perimeter": "core"
+        },
+        {
+          "id": "vav-f2-north",
+          "zone": "zone-f2-north",
+          "reheat": "electric",
+          "floor": 2,
+          "perimeter": "north"
+        },
+        {
+          "id": "vav-f2-east",
+          "zone": "zone-f2-east",
+          "reheat": "electric",
+          "floor": 2,
+          "perimeter": "east"
+        },
+        {
+          "id": "vav-f2-south",
+          "zone": "zone-f2-south",
+          "reheat": "electric",
+          "floor": 2,
+          "perimeter": "south"
+        },
+        {
+          "id": "vav-f2-west",
+          "zone": "zone-f2-west",
+          "reheat": "electric",
+          "floor": 2,
+          "perimeter": "west"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "timesteps_per_hour": 60,
+  "reporting_frequency": "Zone Timestep",
+  "run_period": {
+    "name": "RepresentativeWeek",
+    "begin_month": 1,
+    "begin_day": 6,
+    "end_month": 1,
+    "end_day": 12
+  },
+  "energyplus_wall_seconds": 7.93,
+  "csv_rows": 2378880,
+  "output_csv": "timeseries_representative_week_1min.csv"
+}

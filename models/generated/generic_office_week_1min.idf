@@ -1,0 +1,3497 @@
+Version,
+  24.2;                    !- Version Identifier
+
+GlobalGeometryRules,
+  UpperLeftCorner,
+  Counterclockwise,  !- Field 2
+  World;  !- Field 3
+
+Timestep,
+  60;
+
+RunPeriod,
+  RepresentativeWeek,
+  1,  !- Field 2
+  6,  !- Field 3
+  ,  !- Field 4
+  1,  !- Field 5
+  12,  !- Field 6
+  ,  !- Field 7
+  Sunday,  !- Field 8
+  Yes,  !- Field 9
+  Yes,  !- Field 10
+  No,  !- Field 11
+  Yes,  !- Field 12
+  Yes;  !- Field 13
+
+SimulationControl,
+  Yes,
+  Yes,  !- Field 2
+  No,  !- Field 3
+  No,  !- Field 4
+  Yes;  !- Field 5
+
+Site:Location,
+  Chicago OHare,
+  41.98,  !- Field 2
+  -87.9,  !- Field 3
+  -6,  !- Field 4
+  201;  !- Field 5
+
+SizingPeriod:DesignDay,
+  Chicago OHare Winter Design Day,
+  1,  !- Field 2
+  21,  !- Field 3
+  WinterDesignDay,  !- Field 4
+  -17.3,  !- Field 5
+  0,  !- Field 6
+  ,  !- Field 7
+  ,  !- Field 8
+  Wetbulb,  !- Field 9
+  -17.3,  !- Field 10
+  ,  !- Field 11
+  ,  !- Field 12
+  ,  !- Field 13
+  ,  !- Field 14
+  98934,  !- Field 15
+  4.9,  !- Field 16
+  270,  !- Field 17
+  No,  !- Field 18
+  No,  !- Field 19
+  No,  !- Field 20
+  ASHRAEClearSky,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  ,  !- Field 24
+  ,  !- Field 25
+  0;  !- Field 26
+
+SizingPeriod:DesignDay,
+  Chicago OHare Summer Design Day,
+  7,  !- Field 2
+  21,  !- Field 3
+  SummerDesignDay,  !- Field 4
+  33.3,  !- Field 5
+  10,  !- Field 6
+  ,  !- Field 7
+  ,  !- Field 8
+  Wetbulb,  !- Field 9
+  22.8,  !- Field 10
+  ,  !- Field 11
+  ,  !- Field 12
+  ,  !- Field 13
+  ,  !- Field 14
+  98934,  !- Field 15
+  5.2,  !- Field 16
+  230,  !- Field 17
+  No,  !- Field 18
+  No,  !- Field 19
+  No,  !- Field 20
+  ASHRAEClearSky,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  ,  !- Field 24
+  ,  !- Field 25
+  1;  !- Field 26
+
+Building,
+  Generic Office 2F,
+  0,  !- Field 2
+  City,  !- Field 3
+  0.04,  !- Field 4
+  0.004,  !- Field 5
+  ,  !- Field 6
+  25,  !- Field 7
+  6;  !- Field 8
+
+ScheduleTypeLimits,
+  Fraction,
+  0,  !- Field 2
+  1,  !- Field 3
+  CONTINUOUS;  !- Field 4
+
+ScheduleTypeLimits,
+  Temperature,
+  -60,  !- Field 2
+  200,  !- Field 3
+  CONTINUOUS;  !- Field 4
+
+ScheduleTypeLimits,
+  Any Number,
+  -100,  !- Field 2
+  1000,  !- Field 3
+  CONTINUOUS;  !- Field 4
+
+Schedule:Compact,
+  Thermostat Heating Setpoint,
+  Temperature,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: AllDays,  !- Field 4
+  Until: 24:00,  !- Field 5
+  21.1;  !- Field 6
+
+Schedule:Compact,
+  Thermostat Cooling Setpoint,
+  Temperature,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: AllDays,  !- Field 4
+  Until: 24:00,  !- Field 5
+  24;  !- Field 6
+
+Schedule:Compact,
+  AHU Fan Schedule,
+  Fraction,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 19:00,  !- Field 7
+  1,  !- Field 8
+  Until: 24:00,  !- Field 9
+  0,  !- Field 10
+  For: AllOtherDays,  !- Field 11
+  Until: 24:00,  !- Field 12
+  0;  !- Field 13
+
+Schedule:Compact,
+  Outdoor Air Schedule,
+  Fraction,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: AllDays,  !- Field 4
+  Until: 24:00,  !- Field 5
+  1;  !- Field 6
+
+Schedule:Constant,
+  Always On,
+  Fraction,  !- Field 2
+  1;  !- Field 3
+
+Schedule:Constant,
+  Always Off,
+  Fraction,  !- Field 2
+  0;  !- Field 3
+
+Schedule:Compact,
+  zone-f1-core Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-core Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-core Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-north Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-north Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-north Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-east Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-east Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-east Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-south Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-south Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-south Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-west Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-west Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f1-west Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-core Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-core Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-core Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-north Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-north Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-north Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-east Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-east Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-east Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-south Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-south Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-south Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-west Occupancy Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.25,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-west Lights Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Compact,
+  zone-f2-west Equipment Schedule,
+  Any Number,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: Weekdays,  !- Field 4
+  Until: 06:00,  !- Field 5
+  0.05,  !- Field 6
+  Until: 07:00,  !- Field 7
+  0.3,  !- Field 8
+  Until: 18:00,  !- Field 9
+  1,  !- Field 10
+  Until: 24:00,  !- Field 11
+  0.05,  !- Field 12
+  For: Weekends,  !- Field 13
+  Until: 24:00,  !- Field 14
+  0.05,  !- Field 15
+  For: Holidays,  !- Field 16
+  Until: 24:00,  !- Field 17
+  0.05,  !- Field 18
+  For: AllOtherDays,  !- Field 19
+  Until: 24:00,  !- Field 20
+  0.05;  !- Field 21
+
+Schedule:Constant,
+  Activity Schedule,
+  Any Number,  !- Field 2
+  131;  !- Field 3
+
+Material,
+  Wall Insulation,
+  MediumRough,  !- Field 2
+  0.1016,  !- Field 3
+  0.16,  !- Field 4
+  1200,  !- Field 5
+  800,  !- Field 6
+  0.9,  !- Field 7
+  0.7,  !- Field 8
+  0.7;  !- Field 9
+
+Material,
+  Wall Gypsum,
+  Smooth,  !- Field 2
+  0.015875,  !- Field 3
+  0.16,  !- Field 4
+  800,  !- Field 5
+  1090,  !- Field 6
+  0.9,  !- Field 7
+  0.7,  !- Field 8
+  0.7;  !- Field 9
+
+Construction,
+  Ext Wall,
+  Wall Gypsum,  !- Field 2
+  Wall Insulation,  !- Field 3
+  Wall Gypsum;  !- Field 4
+
+Construction,
+  Ext Roof,
+  Wall Insulation;  !- Field 2
+
+Construction,
+  Ext Floor,
+  Wall Insulation;  !- Field 2
+
+Construction,
+  Int Partition,
+  Wall Gypsum,  !- Field 2
+  Wall Gypsum;  !- Field 3
+
+WindowMaterial:SimpleGlazingSystem,
+  Simple Glazing,
+  2.7,  !- Field 2
+  0.6;  !- Field 3
+
+Construction,
+  Window,
+  Simple Glazing;  !- Field 2
+
+Zone,
+  zone-f1-core,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  0,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  12167.9;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f1-core Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f1-core,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  71.7,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  0,  !- Field 20
+  4.5,  !- Field 21
+  56.46,  !- Field 22
+  0;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-core Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f1-core,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  3.4848,  !- Field 14
+  71.7,  !- Field 15
+  4.5,  !- Field 16
+  3.4848,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  4.5,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-core Wall-N,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-core,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  56.46,  !- Field 13
+  0,  !- Field 14
+  71.7,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  4.5,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-core Wall-S,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-core,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  71.7,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  71.7,  !- Field 18
+  4.5,  !- Field 19
+  3.4848,  !- Field 20
+  4.5,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-core Wall-E,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-core,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  71.7,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  71.7,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-core Wall-W,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-core,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  4.5,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  4.5,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+Lights,
+  zone-f1-core Lights,
+  zone-f1-core,  !- Field 2
+  zone-f1-core Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f1-core Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f1-core Equipment,
+  zone-f1-core,  !- Field 2
+  zone-f1-core Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f1-core People,
+  zone-f1-core,  !- Field 2
+  zone-f1-core Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  174.586,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f1-north,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  0,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  1194.94;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f1-north Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f1-north,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  60.96,  !- Field 19
+  0,  !- Field 20
+  0,  !- Field 21
+  60.96,  !- Field 22
+  0;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-north Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f1-north,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  3.4848,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  3.4848,  !- Field 17
+  76.2,  !- Field 18
+  60.96,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  60.96,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-north Wall-N,
+  Wall,  !- Field 2
+  Ext Wall,  !- Field 3
+  zone-f1-north,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  60.96,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  60.96,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  60.96,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  60.96,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-north Wall-S,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-north,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-north Wall-E,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-north,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  76.2,  !- Field 12
+  56.46,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  60.96,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  60.96,  !- Field 19
+  3.4848,  !- Field 20
+  76.2,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-north Wall-W,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-north,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  0,  !- Field 14
+  0,  !- Field 15
+  60.96,  !- Field 16
+  0,  !- Field 17
+  0,  !- Field 18
+  60.96,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+Lights,
+  zone-f1-north Lights,
+  zone-f1-north,  !- Field 2
+  zone-f1-north Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f1-north Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f1-north Equipment,
+  zone-f1-north,  !- Field 2
+  zone-f1-north Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f1-north People,
+  zone-f1-north,  !- Field 2
+  zone-f1-north Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  17.145,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f1-east,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  0,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  814.816;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f1-east Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f1-east,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  0,  !- Field 20
+  71.7,  !- Field 21
+  56.46,  !- Field 22
+  0;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-east Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f1-east,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  3.4848,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  3.4848,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  71.7,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-east Wall-N,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-east,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  56.46,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  71.7,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-east Wall-S,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-east,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  3.4848,  !- Field 20
+  71.7,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-east Wall-E,
+  Wall,  !- Field 2
+  Ext Wall,  !- Field 3
+  zone-f1-east,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  76.2,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  76.2,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-east Wall-W,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-east,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  71.7,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  71.7,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+Lights,
+  zone-f1-east Lights,
+  zone-f1-east,  !- Field 2
+  zone-f1-east Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f1-east Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f1-east Equipment,
+  zone-f1-east,  !- Field 2
+  zone-f1-east Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f1-east People,
+  zone-f1-east,  !- Field 2
+  zone-f1-east Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  11.691,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f1-south,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  0,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  1194.94;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f1-south Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f1-south,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  0,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  0,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  0,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  0;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-south Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f1-south,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  0,  !- Field 13
+  3.4848,  !- Field 14
+  76.2,  !- Field 15
+  0,  !- Field 16
+  3.4848,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-south Wall-N,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-south,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-south Wall-S,
+  Wall,  !- Field 2
+  Ext Wall,  !- Field 3
+  zone-f1-south,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  0,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  0,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  0,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  0,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-south Wall-E,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-south,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  76.2,  !- Field 12
+  0,  !- Field 13
+  0,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  3.4848,  !- Field 20
+  76.2,  !- Field 21
+  0,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-south Wall-W,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-south,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  0,  !- Field 13
+  0,  !- Field 14
+  0,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  0,  !- Field 18
+  4.5,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  0,  !- Field 22
+  3.4848;  !- Field 23
+
+Lights,
+  zone-f1-south Lights,
+  zone-f1-south,  !- Field 2
+  zone-f1-south Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f1-south Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f1-south Equipment,
+  zone-f1-south,  !- Field 2
+  zone-f1-south Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f1-south People,
+  zone-f1-south,  !- Field 2
+  zone-f1-south Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  17.145,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f1-west,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  0,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  814.816;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f1-west Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f1-west,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  4.5,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  0,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  0;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-west Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f1-west,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  3.4848,  !- Field 14
+  4.5,  !- Field 15
+  4.5,  !- Field 16
+  3.4848,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-west Wall-N,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-west,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  0,  !- Field 14
+  4.5,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-west Wall-S,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-west,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  4.5,  !- Field 15
+  4.5,  !- Field 16
+  0,  !- Field 17
+  4.5,  !- Field 18
+  4.5,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-west Wall-E,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f1-west,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  4.5,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  4.5,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f1-west Wall-W,
+  Wall,  !- Field 2
+  Ext Wall,  !- Field 3
+  zone-f1-west,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  0,  !- Field 14
+  0,  !- Field 15
+  56.46,  !- Field 16
+  0,  !- Field 17
+  0,  !- Field 18
+  56.46,  !- Field 19
+  3.4848,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  3.4848;  !- Field 23
+
+Lights,
+  zone-f1-west Lights,
+  zone-f1-west,  !- Field 2
+  zone-f1-west Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f1-west Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f1-west Equipment,
+  zone-f1-west,  !- Field 2
+  zone-f1-west Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f1-west People,
+  zone-f1-west,  !- Field 2
+  zone-f1-west Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  11.691,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f2-core,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  3.96,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  12167.9;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f2-core Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f2-core,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  71.7,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  3.96,  !- Field 20
+  4.5,  !- Field 21
+  56.46,  !- Field 22
+  3.96;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-core Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f2-core,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  7.4448,  !- Field 14
+  71.7,  !- Field 15
+  4.5,  !- Field 16
+  7.4448,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  4.5,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-core Wall-N,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-core,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  56.46,  !- Field 13
+  3.96,  !- Field 14
+  71.7,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  4.5,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-core Wall-S,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-core,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  71.7,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  71.7,  !- Field 18
+  4.5,  !- Field 19
+  7.4448,  !- Field 20
+  4.5,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-core Wall-E,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-core,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  71.7,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  71.7,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-core Wall-W,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-core,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  4.5,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  4.5,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+Lights,
+  zone-f2-core Lights,
+  zone-f2-core,  !- Field 2
+  zone-f2-core Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f2-core Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f2-core Equipment,
+  zone-f2-core,  !- Field 2
+  zone-f2-core Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f2-core People,
+  zone-f2-core,  !- Field 2
+  zone-f2-core Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  174.586,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f2-north,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  3.96,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  1194.94;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f2-north Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f2-north,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  60.96,  !- Field 19
+  3.96,  !- Field 20
+  0,  !- Field 21
+  60.96,  !- Field 22
+  3.96;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-north Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f2-north,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  7.4448,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  7.4448,  !- Field 17
+  76.2,  !- Field 18
+  60.96,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  60.96,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-north Wall-N,
+  Wall,  !- Field 2
+  Ext Wall,  !- Field 3
+  zone-f2-north,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  60.96,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  60.96,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  60.96,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  60.96,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-north Wall-S,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-north,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-north Wall-E,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-north,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  76.2,  !- Field 12
+  56.46,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  60.96,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  60.96,  !- Field 19
+  7.4448,  !- Field 20
+  76.2,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-north Wall-W,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-north,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  3.96,  !- Field 14
+  0,  !- Field 15
+  60.96,  !- Field 16
+  3.96,  !- Field 17
+  0,  !- Field 18
+  60.96,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+Lights,
+  zone-f2-north Lights,
+  zone-f2-north,  !- Field 2
+  zone-f2-north Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f2-north Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f2-north Equipment,
+  zone-f2-north,  !- Field 2
+  zone-f2-north Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f2-north People,
+  zone-f2-north,  !- Field 2
+  zone-f2-north Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  17.145,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f2-east,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  3.96,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  814.816;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f2-east Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f2-east,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  3.96,  !- Field 20
+  71.7,  !- Field 21
+  56.46,  !- Field 22
+  3.96;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-east Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f2-east,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  7.4448,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  7.4448,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  71.7,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-east Wall-N,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-east,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  56.46,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  71.7,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-east Wall-S,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-east,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  7.4448,  !- Field 20
+  71.7,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-east Wall-E,
+  Wall,  !- Field 2
+  Ext Wall,  !- Field 3
+  zone-f2-east,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  76.2,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  76.2,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-east Wall-W,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-east,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  71.7,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  71.7,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  71.7,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  71.7,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+Lights,
+  zone-f2-east Lights,
+  zone-f2-east,  !- Field 2
+  zone-f2-east Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f2-east Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f2-east Equipment,
+  zone-f2-east,  !- Field 2
+  zone-f2-east Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f2-east People,
+  zone-f2-east,  !- Field 2
+  zone-f2-east Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  11.691,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f2-south,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  3.96,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  1194.94;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f2-south Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f2-south,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  0,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  0,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  3.96,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  3.96;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-south Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f2-south,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  0,  !- Field 13
+  7.4448,  !- Field 14
+  76.2,  !- Field 15
+  0,  !- Field 16
+  7.4448,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-south Wall-N,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-south,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-south Wall-S,
+  Wall,  !- Field 2
+  Ext Wall,  !- Field 3
+  zone-f2-south,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  0,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  0,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  0,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  0,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-south Wall-E,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-south,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  76.2,  !- Field 12
+  0,  !- Field 13
+  3.96,  !- Field 14
+  76.2,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  76.2,  !- Field 18
+  4.5,  !- Field 19
+  7.4448,  !- Field 20
+  76.2,  !- Field 21
+  0,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-south Wall-W,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-south,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  0,  !- Field 13
+  3.96,  !- Field 14
+  0,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  0,  !- Field 18
+  4.5,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  0,  !- Field 22
+  7.4448;  !- Field 23
+
+Lights,
+  zone-f2-south Lights,
+  zone-f2-south,  !- Field 2
+  zone-f2-south Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f2-south Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f2-south Equipment,
+  zone-f2-south,  !- Field 2
+  zone-f2-south Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f2-south People,
+  zone-f2-south,  !- Field 2
+  zone-f2-south Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  17.145,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Zone,
+  zone-f2-west,
+  0,  !- Field 2
+  0,  !- Field 3
+  0,  !- Field 4
+  3.96,  !- Field 5
+  1,  !- Field 6
+  1,  !- Field 7
+  3.4848,  !- Field 8
+  814.816;  !- Field 9
+
+BuildingSurface:Detailed,
+  zone-f2-west Floor,
+  Floor,  !- Field 2
+  Ext Floor,  !- Field 3
+  zone-f2-west,  !- Field 4
+  ,  !- Field 5
+  Ground,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  4.5,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  3.96,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  3.96;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-west Roof,
+  Roof,  !- Field 2
+  Ext Roof,  !- Field 3
+  zone-f2-west,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  7.4448,  !- Field 14
+  4.5,  !- Field 15
+  4.5,  !- Field 16
+  7.4448,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-west Wall-N,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-west,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  56.46,  !- Field 13
+  3.96,  !- Field 14
+  4.5,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  56.46,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-west Wall-S,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-west,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  4.5,  !- Field 15
+  4.5,  !- Field 16
+  3.96,  !- Field 17
+  4.5,  !- Field 18
+  4.5,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-west Wall-E,
+  Wall,  !- Field 2
+  Int Partition,  !- Field 3
+  zone-f2-west,  !- Field 4
+  ,  !- Field 5
+  Adiabatic,  !- Field 6
+  ,  !- Field 7
+  NoSun,  !- Field 8
+  ,  !- Field 9
+  0,  !- Field 10
+  4,  !- Field 11
+  4.5,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  4.5,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  4.5,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  4.5,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+BuildingSurface:Detailed,
+  zone-f2-west Wall-W,
+  Wall,  !- Field 2
+  Ext Wall,  !- Field 3
+  zone-f2-west,  !- Field 4
+  ,  !- Field 5
+  Outdoors,  !- Field 6
+  ,  !- Field 7
+  SunExposed,  !- Field 8
+  WindExposed,  !- Field 9
+  0.5,  !- Field 10
+  4,  !- Field 11
+  0,  !- Field 12
+  4.5,  !- Field 13
+  3.96,  !- Field 14
+  0,  !- Field 15
+  56.46,  !- Field 16
+  3.96,  !- Field 17
+  0,  !- Field 18
+  56.46,  !- Field 19
+  7.4448,  !- Field 20
+  0,  !- Field 21
+  4.5,  !- Field 22
+  7.4448;  !- Field 23
+
+Lights,
+  zone-f2-west Lights,
+  zone-f2-west,  !- Field 2
+  zone-f2-west Lights Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.2,  !- Field 9
+  0.4,  !- Field 10
+  0,  !- Field 11
+  zone-f2-west Lights;  !- Field 12
+
+ElectricEquipment,
+  zone-f2-west Equipment,
+  zone-f2-west,  !- Field 2
+  zone-f2-west Equipment Schedule,  !- Field 3
+  Watts/Area,  !- Field 4
+  ,  !- Field 5
+  10.8,  !- Field 6
+  ,  !- Field 7
+  0,  !- Field 8
+  0.3,  !- Field 9
+  0.2;  !- Field 10
+
+People,
+  zone-f2-west People,
+  zone-f2-west,  !- Field 2
+  zone-f2-west Occupancy Schedule,  !- Field 3
+  People,  !- Field 4
+  11.691,  !- Field 5
+  ,  !- Field 6
+  ,  !- Field 7
+  0.3,  !- Field 8
+  ,  !- Field 9
+  Activity Schedule;  !- Field 10
+
+Schedule:Constant,
+  FanAvailSched,
+  Fraction,  !- Field 2
+  1;  !- Field 3
+
+Schedule:Constant,
+  Min OA Sched,
+  Fraction,  !- Field 2
+  1;  !- Field 3
+
+Schedule:Compact,
+  SAT Reset Schedule,
+  Temperature,  !- Field 2
+  Through: 12/31,  !- Field 3
+  For: AllDays,  !- Field 4
+  Until: 24:00,  !- Field 5
+  13;  !- Field 6
+
+HVACTemplate:Thermostat,
+  Office Thermostat,
+  Thermostat Heating Setpoint,  !- Field 2
+  ,  !- Field 3
+  Thermostat Cooling Setpoint,  !- Field 4
+  ;  !- Field 5
+
+HVACTemplate:System:PackagedVAV,
+  ahu-1 PackagedVAV,
+  FanAvailSched,  !- Field 2
+  autosize,  !- Field 3
+  autosize,  !- Field 4
+  DrawThrough,  !- Field 5
+  0.7,  !- Field 6
+  600,  !- Field 7
+  0.9,  !- Field 8
+  1,  !- Field 9
+  TwoSpeedDX,  !- Field 10
+  ,  !- Field 11
+  SAT Reset Schedule,  !- Field 12
+  13,  !- Field 13
+  autosize,  !- Field 14
+  autosize,  !- Field 15
+  3.2,  !- Field 16
+  Electric,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  10,  !- Field 20
+  autosize,  !- Field 21
+  0.8,  !- Field 22
+  ,  !- Field 23
+  autosize,  !- Field 24
+  autosize,  !- Field 25
+  ProportionalMinimum,  !- Field 26
+  Min OA Sched,  !- Field 27
+  DifferentialDryBulb,  !- Field 28
+  NoLockout,  !- Field 29
+  19,  !- Field 30
+  ,  !- Field 31
+  ,  !- Field 32
+  4,  !- Field 33
+  ,  !- Field 34
+  ,  !- Field 35
+  InletVaneDampers,  !- Field 36
+  CycleOnAny,  !- Field 37
+  ,  !- Field 38
+  None,  !- Field 39
+  0.7,  !- Field 40
+  0.65,  !- Field 41
+  WarmestTemperatureFirst,  !- Field 42
+  None,  !- Field 43
+  None,  !- Field 44
+  ,  !- Field 45
+  60,  !- Field 46
+  None,  !- Field 47
+  ,  !- Field 48
+  1e-06,  !- Field 49
+  2690,  !- Field 50
+  ,  !- Field 51
+  30,  !- Field 52
+  NonCoincident,  !- Field 53
+  ,  !- Field 54
+  ,  !- Field 55
+  ,  !- Field 56
+  ,  !- Field 57
+  ,  !- Field 58
+  ;  !- Field 59
+
+HVACTemplate:Zone:VAV,
+  zone-f1-core,
+  ahu-1 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:Zone:VAV,
+  zone-f1-north,
+  ahu-1 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:Zone:VAV,
+  zone-f1-east,
+  ahu-1 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:Zone:VAV,
+  zone-f1-south,
+  ahu-1 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:Zone:VAV,
+  zone-f1-west,
+  ahu-1 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:System:PackagedVAV,
+  ahu-2 PackagedVAV,
+  FanAvailSched,  !- Field 2
+  autosize,  !- Field 3
+  autosize,  !- Field 4
+  DrawThrough,  !- Field 5
+  0.7,  !- Field 6
+  600,  !- Field 7
+  0.9,  !- Field 8
+  1,  !- Field 9
+  TwoSpeedDX,  !- Field 10
+  ,  !- Field 11
+  SAT Reset Schedule,  !- Field 12
+  13,  !- Field 13
+  autosize,  !- Field 14
+  autosize,  !- Field 15
+  3.2,  !- Field 16
+  Electric,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  10,  !- Field 20
+  autosize,  !- Field 21
+  0.8,  !- Field 22
+  ,  !- Field 23
+  autosize,  !- Field 24
+  autosize,  !- Field 25
+  ProportionalMinimum,  !- Field 26
+  Min OA Sched,  !- Field 27
+  DifferentialDryBulb,  !- Field 28
+  NoLockout,  !- Field 29
+  19,  !- Field 30
+  ,  !- Field 31
+  ,  !- Field 32
+  4,  !- Field 33
+  ,  !- Field 34
+  ,  !- Field 35
+  InletVaneDampers,  !- Field 36
+  CycleOnAny,  !- Field 37
+  ,  !- Field 38
+  None,  !- Field 39
+  0.7,  !- Field 40
+  0.65,  !- Field 41
+  WarmestTemperatureFirst,  !- Field 42
+  None,  !- Field 43
+  None,  !- Field 44
+  ,  !- Field 45
+  60,  !- Field 46
+  None,  !- Field 47
+  ,  !- Field 48
+  1e-06,  !- Field 49
+  2690,  !- Field 50
+  ,  !- Field 51
+  30,  !- Field 52
+  NonCoincident,  !- Field 53
+  ,  !- Field 54
+  ,  !- Field 55
+  ,  !- Field 56
+  ,  !- Field 57
+  ,  !- Field 58
+  ;  !- Field 59
+
+HVACTemplate:Zone:VAV,
+  zone-f2-core,
+  ahu-2 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:Zone:VAV,
+  zone-f2-north,
+  ahu-2 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:Zone:VAV,
+  zone-f2-east,
+  ahu-2 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:Zone:VAV,
+  zone-f2-south,
+  ahu-2 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+HVACTemplate:Zone:VAV,
+  zone-f2-west,
+  ahu-2 PackagedVAV,  !- Field 2
+  Office Thermostat,  !- Field 3
+  autosize,  !- Field 4
+  ,  !- Field 5
+  ,  !- Field 6
+  Constant,  !- Field 7
+  0.2,  !- Field 8
+  ,  !- Field 9
+  ,  !- Field 10
+  Sum,  !- Field 11
+  0.00236,  !- Field 12
+  0.000305,  !- Field 13
+  0,  !- Field 14
+  Electric,  !- Field 15
+  ,  !- Field 16
+  Reverse,  !- Field 17
+  ,  !- Field 18
+  ,  !- Field 19
+  ,  !- Field 20
+  ,  !- Field 21
+  ,  !- Field 22
+  ,  !- Field 23
+  None,  !- Field 24
+  ,  !- Field 25
+  autosize,  !- Field 26
+  SystemSupplyAirTemperature,  !- Field 27
+  ,  !- Field 28
+  ,  !- Field 29
+  SupplyAirTemperature,  !- Field 30
+  16,  !- Field 31
+  ;  !- Field 32
+
+Output:VariableDictionary,
+  IDF;
+
+Output:SQLite,
+  SimpleAndTabular;
+
+Output:Meter,
+  Electricity:Facility,
+  hourly;  !- Field 2
+
+Output:Meter,
+  NaturalGas:Facility,
+  hourly;  !- Field 2
+
+Output:Meter,
+  Electricity:HVAC,
+  hourly;  !- Field 2
+
+Output:Variable,
+  *,
+  Fan Electric Power,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Zone Thermostat Heating Setpoint Temperature,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Coil Heating Rate,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  System Node Temperature,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Coil Part Load Ratio,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Air System Outdoor Air Flow Fraction,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Fan Part Load Ratio,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Zone Thermostat Cooling Setpoint Temperature,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Air Terminal Heating Coil Heating Rate,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Air Terminal Damper Position,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Zone Air System Sensible Load,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  System Node Mass Flow Rate,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Fan Runtime Fraction,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Air System Cooling Coil Setpoint Temperature,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Zone Mean Air Temperature,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  System Node Pressure,  !- Field 2
+  timestep;  !- Field 3
+
+Output:Variable,
+  *,
+  Coil Cooling Rate,  !- Field 2
+  timestep;  !- Field 3

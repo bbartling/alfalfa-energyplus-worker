@@ -1,0 +1,598 @@
+{
+  "schema_version": "1.0",
+  "units": {
+    "airflow_m3_s": "m\u00b3/s",
+    "pressure_pa": "Pa",
+    "power_w": "W",
+    "capacity_w": "W",
+    "head_pa": "Pa",
+    "flow_m3_s": "m\u00b3/s"
+  },
+  "climate": {
+    "ashrae_climate_zone": "4A",
+    "weather_file": "USA_IL_Chicago-OHare.Intl.AP.725300_TMY3.epw"
+  },
+  "ahus": [
+    {
+      "id": "ahu-1",
+      "design_supply_airflow_m3_s": {
+        "value": 2.490079166666667,
+        "unit": "m\u00b3/s"
+      },
+      "fan_design_static_pressure_pa": {
+        "value": null,
+        "unit": "Pa"
+      },
+      "fan_design_power_w": {
+        "value": null,
+        "unit": "W"
+      },
+      "cooling_capacity_w": {
+        "value": 68795.37,
+        "unit": "W"
+      },
+      "heating_capacity_w": {
+        "value": 0.0,
+        "unit": "W"
+      },
+      "minimum_oa_flow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      }
+    },
+    {
+      "id": "ahu-2",
+      "design_supply_airflow_m3_s": {
+        "value": 2.4543725000000003,
+        "unit": "m\u00b3/s"
+      },
+      "fan_design_static_pressure_pa": {
+        "value": null,
+        "unit": "Pa"
+      },
+      "fan_design_power_w": {
+        "value": null,
+        "unit": "W"
+      },
+      "cooling_capacity_w": {
+        "value": 68313.7,
+        "unit": "W"
+      },
+      "heating_capacity_w": {
+        "value": 0.0,
+        "unit": "W"
+      },
+      "minimum_oa_flow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      }
+    }
+  ],
+  "vavs": [
+    {
+      "id": "vav-f1-core",
+      "zone": "zone-f1-core",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f1-north",
+      "zone": "zone-f1-north",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f1-east",
+      "zone": "zone-f1-east",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f1-south",
+      "zone": "zone-f1-south",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f1-west",
+      "zone": "zone-f1-west",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f2-core",
+      "zone": "zone-f2-core",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f2-north",
+      "zone": "zone-f2-north",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f2-east",
+      "zone": "zone-f2-east",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f2-south",
+      "zone": "zone-f2-south",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    },
+    {
+      "id": "vav-f2-west",
+      "zone": "zone-f2-west",
+      "reheat_type": "electric",
+      "max_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "min_airflow_m3_s": {
+        "value": null,
+        "unit": "m\u00b3/s"
+      },
+      "reheat_capacity_w": {
+        "value": null,
+        "unit": "W"
+      }
+    }
+  ],
+  "pumps": [],
+  "loops": [],
+  "curves": {
+    "fans": [
+      {
+        "fan_id": "ahu-1 PackagedVAV Supply Fan",
+        "curve_points": [
+          {
+            "flow_fraction": 0.0,
+            "flow_m3_s": {
+              "value": 0.0,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 30.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 1755.1009742417411,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.1,
+            "flow_m3_s": {
+              "value": 0.1,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 30.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 1885.1050841500003,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.2,
+            "flow_m3_s": {
+              "value": 0.2,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 30.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 1988.6713012000005,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.3,
+            "flow_m3_s": {
+              "value": 0.3,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 54.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 2090.41944805,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.4,
+            "flow_m3_s": {
+              "value": 0.4,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 96.00000000000001,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 2216.5091716,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.5,
+            "flow_m3_s": {
+              "value": 0.5,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 150.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 2393.10011875,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.6,
+            "flow_m3_s": {
+              "value": 0.6,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 216.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 2646.3519364,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.7,
+            "flow_m3_s": {
+              "value": 0.7,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 293.99999999999994,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 3002.4242714500006,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.8,
+            "flow_m3_s": {
+              "value": 0.8,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 384.00000000000006,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 3487.476770800001,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.9,
+            "flow_m3_s": {
+              "value": 0.9,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 486.00000000000006,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 4127.669081350001,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 1.0,
+            "flow_m3_s": {
+              "value": 1.0,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 600.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 4949.16085,
+              "unit": "W"
+            }
+          }
+        ]
+      },
+      {
+        "fan_id": "ahu-2 PackagedVAV Supply Fan",
+        "curve_points": [
+          {
+            "flow_fraction": 0.0,
+            "flow_m3_s": {
+              "value": 0.0,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 30.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 1755.1009742417411,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.1,
+            "flow_m3_s": {
+              "value": 0.1,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 30.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 1885.1050841500003,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.2,
+            "flow_m3_s": {
+              "value": 0.2,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 30.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 1988.6713012000005,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.3,
+            "flow_m3_s": {
+              "value": 0.3,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 54.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 2090.41944805,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.4,
+            "flow_m3_s": {
+              "value": 0.4,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 96.00000000000001,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 2216.5091716,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.5,
+            "flow_m3_s": {
+              "value": 0.5,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 150.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 2393.10011875,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.6,
+            "flow_m3_s": {
+              "value": 0.6,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 216.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 2646.3519364,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.7,
+            "flow_m3_s": {
+              "value": 0.7,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 293.99999999999994,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 3002.4242714500006,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.8,
+            "flow_m3_s": {
+              "value": 0.8,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 384.00000000000006,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 3487.476770800001,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 0.9,
+            "flow_m3_s": {
+              "value": 0.9,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 486.00000000000006,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 4127.669081350001,
+              "unit": "W"
+            }
+          },
+          {
+            "flow_fraction": 1.0,
+            "flow_m3_s": {
+              "value": 1.0,
+              "unit": "m\u00b3/s"
+            },
+            "pressure_pa": {
+              "value": 600.0,
+              "unit": "Pa"
+            },
+            "power_w": {
+              "value": 4949.16085,
+              "unit": "W"
+            }
+          }
+        ]
+      }
+    ],
+    "pumps": []
+  },
+  "performance": {
+    "annual_electricity_kwh": 863970.0,
+    "annual_gas_therm": 0.0,
+    "site_eui_kwh_per_m2": 93.0,
+    "unmet_hours": 0.0,
+    "conditioned_floor_area_m2": 9290.0,
+    "estimation_method": "facility_meter_unreliable_used_doe_medium_office_benchmark"
+  }
+}
